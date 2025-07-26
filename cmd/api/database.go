@@ -99,6 +99,25 @@ func (app *application) getActiveWebsites() ([]Website, error) {
 	return websites, nil
 }
 
+// Get single active website
+func (app *application) getWebsiteByID(websiteID int) (*Website, error) {
+	rows, err := app.db.Query("SELECT * FROM websites WHERE id = ? && is_active = 1", websiteID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get website: %w", err)
+	}
+
+	defer rows.Close()
+
+	var website Website
+	err = rows.Scan(&website.ID, &website.URL, &website.Name, &website.CheckInterval, &website.IsActive, &website.CreatedAt, &website.UpdatedAt)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan website: %w", err)
+	}
+
+	return &website, nil
+}
+
 // Store uptime check result
 func (app *application) storeUptimeCheck(websiteID int, statusCode int, responseTime int64, isUp bool, errorMsg string) error {
 	_, err := app.db.Exec(`
