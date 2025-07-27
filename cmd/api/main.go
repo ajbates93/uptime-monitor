@@ -4,21 +4,51 @@ import (
 	"database/sql"
 	"log/slog"
 	"os"
+	"uptime-monitor/internal/mailer"
 
+	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type config struct {
-	port int
+	port    int
+	smtp2go struct {
+		apiKey string
+		sender string
+	}
+	alerts struct {
+		recipient string
+	}
 }
 
 type application struct {
 	config config
 	logger *slog.Logger
 	db     *sql.DB
+	mailer mailer.Mailer
 }
 
 func main() {
+	// Load .env file if it exists
+	godotenv.Load()
+
+	var cfg config
+
+	// Load configuration from environment variables
+	cfg.port = 4000
+
+	// SMTP2GO configuration
+	cfg.smtp2go.apiKey = getEnvOrDefault("SMTP2GO_API_KEY", "")
+	cfg.smtp2go.sender = getEnvOrDefault("SMTP2GO_SENDER", "Uptime Monitor <uptime@alexbates.dev>")
+
+	// Alert configuration
+	cfg.alerts.recipient = getEnvOrDefault("ALERT_RECIPIENT", "ajbates93@gmail.com")
+
+	// Validate required environment variables
+	if cfg.smtp2go.apiKey == "" {
+		slog.Error("SMTP2GO_API_KEY environment variable is required")
+		os.Exit(1)
+	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
@@ -38,11 +68,10 @@ func main() {
 	}
 
 	app := &application{
-		config: config{
-			port: 4000,
-		},
+		config: cfg,
 		logger: logger,
 		db:     db,
+		mailer: mailer.New(cfg.smtp2go.apiKey, cfg.smtp2go.sender),
 	}
 
 	// Initialise database tables
@@ -65,4 +94,12 @@ func main() {
 		logger.Error("Error starting server", "error", err)
 		os.Exit(1)
 	}
+}
+
+// getEnvOrDefault returns the environment variable value or a default if not set
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 )
 
 // Database operations for websites
@@ -31,6 +32,16 @@ func (app *application) initDatabase() error {
 		FOREIGN KEY (website_id) REFERENCES websites (id)
 	);`
 
+	// Create alert_history table to track when emails were sent
+	createAlertHistoryTable := `
+	CREATE TABLE IF NOT EXISTS alert_history (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		website_id INTEGER,
+		alert_type TEXT NOT NULL,
+		sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (website_id) REFERENCES websites (id)
+	);`
+
 	_, err := app.db.Exec(createWebsitesTable)
 	if err != nil {
 		return fmt.Errorf("failed to create websites table: %w", err)
@@ -39,6 +50,11 @@ func (app *application) initDatabase() error {
 	_, err = app.db.Exec(createUptimeChecksTable)
 	if err != nil {
 		return fmt.Errorf("failed to create uptime_checks table: %w", err)
+	}
+
+	_, err = app.db.Exec(createAlertHistoryTable)
+	if err != nil {
+		return fmt.Errorf("failed to create alert_history table: %w", err)
 	}
 
 	return nil
@@ -63,6 +79,7 @@ func (app *application) seedDatabase() error {
 		{url: "https://alexbates.dev", name: "Alex Bates Website"},
 		{url: "https://pocketworks.co.uk", name: "Pocketworks"},
 		{url: "https://www.anthonygordonpileofshite.com", name: "Anthony Gordon Pile of Shite"},
+		{url: "https://airshift.co.uk", name: "AirShift"},
 	}
 
 	// Insert websites
@@ -160,4 +177,131 @@ func (app *application) getUptimeHistory(websiteID int, limit int) ([]WebsiteSta
 	}
 
 	return history, nil
+}
+
+// Get the last status for a website
+func (app *application) getLastWebsiteStatus(websiteID int) (*WebsiteStatus, error) {
+	query := `
+		SELECT id, website_id, 
+		       CASE WHEN is_up THEN 'up' ELSE 'down' END as status,
+		       response_time_ms, status_code, error_message, checked_at
+		FROM uptime_checks 
+		WHERE website_id = ? 
+		ORDER BY checked_at DESC 
+		LIMIT 1`
+
+	var status WebsiteStatus
+	err := app.db.QueryRow(query, websiteID).Scan(&status.ID, &status.WebsiteID, &status.Status, &status.ResponseTime, &status.StatusCode, &status.Error, &status.CheckedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get last website status: %w", err)
+	}
+
+	return &status, nil
+}
+
+// Record that an alert was sent
+func (app *application) recordAlertSent(websiteID int, alertType string) error {
+	_, err := app.db.Exec("INSERT INTO alert_history (website_id, alert_type) VALUES (?, ?)", websiteID, alertType)
+	if err != nil {
+		return fmt.Errorf("failed to record alert sent: %w", err)
+	}
+	return nil
+}
+
+// Check if we should send an alert based on timing rules
+func (app *application) shouldSendAlert(websiteID int, alertType string) (bool, error) {
+	var lastSent time.Time
+	var count int
+
+	// For "down" alerts, check if we sent one in the last hour
+	if alertType == "down" {
+		err := app.db.QueryRow(`
+			SELECT COUNT(*), MAX(sent_at) 
+			FROM alert_history 
+			WHERE website_id = ? AND alert_type = 'down' 
+			AND sent_at > datetime('now', '-1 hour')`, websiteID).Scan(&count, &lastSent)
+
+		if err != nil && err.Error() != "sql: no rows in result set" {
+			return false, fmt.Errorf("failed to check alert history: %w", err)
+		}
+
+		// Send if no recent down alert
+		return count == 0, nil
+	}
+
+	// For "recovery" alerts, check if we sent one in the last 24 hours
+	if alertType == "recovery" {
+		err := app.db.QueryRow(`
+			SELECT COUNT(*), MAX(sent_at) 
+			FROM alert_history 
+			WHERE website_id = ? AND alert_type = 'recovery' 
+			AND sent_at > datetime('now', '-24 hours')`, websiteID).Scan(&count, &lastSent)
+
+		if err != nil && err.Error() != "sql: no rows in result set" {
+			return false, fmt.Errorf("failed to check alert history: %w", err)
+		}
+
+		// Send if no recent recovery alert
+		return count == 0, nil
+	}
+
+	return false, nil
+}
+
+// Get all websites with their current status for email templates
+func (app *application) getWebsitesWithStatus() ([]map[string]interface{}, error) {
+	query := `
+		SELECT w.id, w.name, w.url,
+		       CASE WHEN uc.is_up THEN 'up' ELSE 'down' END as status,
+		       uc.checked_at
+		FROM websites w
+		LEFT JOIN (
+			SELECT uc1.website_id, uc1.is_up, uc1.checked_at
+			FROM uptime_checks uc1
+			WHERE uc1.checked_at = (
+				SELECT MAX(uc2.checked_at)
+				FROM uptime_checks uc2
+				WHERE uc2.website_id = uc1.website_id
+			)
+		) uc ON w.id = uc.website_id
+		WHERE w.is_active = 1
+		ORDER BY w.name`
+
+	rows, err := app.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query websites with status: %w", err)
+	}
+	defer rows.Close()
+
+	var websites []map[string]interface{}
+	for rows.Next() {
+		var id int
+		var name, url, status string
+		var checkedAt *time.Time
+
+		err := rows.Scan(&id, &name, &url, &status, &checkedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan website status: %w", err)
+		}
+
+		// Default to "unknown" if no status found
+		if status == "" {
+			status = "unknown"
+		}
+
+		website := map[string]interface{}{
+			"ID":     id,
+			"Name":   name,
+			"URL":    url,
+			"Status": status,
+		}
+
+		if checkedAt != nil {
+			website["CheckedAt"] = checkedAt.Format("2006-01-02 15:04:05")
+		}
+
+		websites = append(websites, website)
+	}
+
+	return websites, nil
 }
