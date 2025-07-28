@@ -53,7 +53,8 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	// Initialise database
-	db, err := sql.Open("sqlite3", "./uptime_monitor.db")
+	dbPath := getEnvOrDefault("DB_PATH", "./uptime_monitor.db")
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		logger.Error("Failed to open database", "error", err)
 		os.Exit(1)
@@ -85,6 +86,12 @@ func main() {
 		logger.Error("Failed to seed database", "error", err)
 		os.Exit(1)
 	}
+
+	// Add any new websites that might not be in the seed
+	// if err := app.addWebsite("https://airshift.co.uk", "AirShift"); err != nil {
+	// 	logger.Error("Failed to add new website", "error", err)
+	// 	os.Exit(1)
+	// }
 
 	// Start monitoring service
 	app.startMonitoring()

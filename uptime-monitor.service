@@ -1,0 +1,16 @@
+[Unit]
+Description=Uptime Monitor
+After=network.target
+
+[Service]
+Type=simple
+User=nobody
+Group=nogroup
+ExecStart=/usr/local/bin/uptime-monitor
+Restart=always
+RestartSec=5
+Environment=DB_PATH=/var/lib/uptime-monitor/uptime.db
+WorkingDirectory=/var/lib/uptime-monitor
+
+[Install]
+WantedBy=multi-user.target

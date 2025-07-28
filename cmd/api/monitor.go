@@ -42,11 +42,6 @@ func (app *application) checkWebsite(website Website) {
 		defer resp.Body.Close()
 		statusCode = resp.StatusCode
 		isUp = resp.StatusCode == http.StatusOK
-		app.logger.Info("Website check completed",
-			"url", website.URL,
-			"status", statusCode,
-			"response_time_ms", responseTime,
-			"is_up", isUp)
 	}
 
 	// Store result in database
@@ -71,6 +66,7 @@ func (app *application) handleStatusChange(website Website, currentIsUp bool) {
 			return
 		} else {
 			// Site is down on first check, send initial down alert
+			app.logger.Info("First check - site is down, sending initial alert", "website", website.Name)
 			app.sendDownAlert(website)
 			return
 		}
@@ -87,6 +83,9 @@ func (app *application) handleStatusChange(website Website, currentIsUp bool) {
 		// Website went from down to up
 		app.logger.Info("Website recovered", "url", website.URL, "name", website.Name)
 		app.sendRecoveryAlert(website)
+	} else if !currentIsUp {
+		// Website is still down, check if we should send a reminder alert
+		app.sendDownAlert(website)
 	}
 }
 
@@ -119,6 +118,7 @@ func (app *application) sendDownAlert(website Website) {
 	}
 
 	// Send email
+	app.logger.Info("Sending down alert email", "website", website.Name, "recipient", app.config.alerts.recipient)
 	err = app.mailer.Send(app.config.alerts.recipient, "website_status_alert.tmpl", emailData)
 	if err != nil {
 		app.logger.Error("Failed to send down alert email", "error", err)
@@ -131,7 +131,7 @@ func (app *application) sendDownAlert(website Website) {
 		app.logger.Error("Failed to record down alert sent", "error", err)
 	}
 
-	app.logger.Info("Down alert sent", "website", website.Name)
+	app.logger.Info("Down alert sent successfully", "website", website.Name)
 }
 
 // Send recovery alert for a website

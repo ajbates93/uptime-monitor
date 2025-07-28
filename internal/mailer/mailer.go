@@ -89,12 +89,16 @@ func (m Mailer) Send(recipient, templateFile string, data any) error {
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
+	fmt.Printf("SMTP2GO Request: %s\n", string(jsonData))
+
 	// Send request to SMTP2GO API
 	for i := 1; i <= 3; i++ {
 		err = m.sendViaAPI(jsonData)
 		if err == nil {
 			return nil
 		}
+
+		fmt.Printf("SMTP2GO attempt %d failed: %v\n", i, err)
 
 		// Wait before retry
 		time.Sleep(500 * time.Millisecond)

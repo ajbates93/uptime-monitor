@@ -79,7 +79,6 @@ func (app *application) seedDatabase() error {
 		{url: "https://alexbates.dev", name: "Alex Bates Website"},
 		{url: "https://pocketworks.co.uk", name: "Pocketworks"},
 		{url: "https://www.anthonygordonpileofshite.com", name: "Anthony Gordon Pile of Shite"},
-		{url: "https://airshift.co.uk", name: "AirShift"},
 	}
 
 	// Insert websites
@@ -92,6 +91,30 @@ func (app *application) seedDatabase() error {
 	}
 
 	app.logger.Info("Database seeded successfully", "websites_added", len(websites))
+	return nil
+}
+
+// Add a new website to the database
+func (app *application) addWebsite(url, name string) error {
+	// Check if website already exists
+	var count int
+	err := app.db.QueryRow("SELECT COUNT(*) FROM websites WHERE url = ?", url).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check if website exists: %w", err)
+	}
+
+	if count > 0 {
+		app.logger.Info("Website already exists", "url", url)
+		return nil
+	}
+
+	// Insert new website
+	_, err = app.db.Exec("INSERT INTO websites (url, name) VALUES (?, ?)", url, name)
+	if err != nil {
+		return fmt.Errorf("failed to insert website %s: %w", url, err)
+	}
+
+	app.logger.Info("Added new website", "url", url, "name", name)
 	return nil
 }
 
@@ -210,16 +233,15 @@ func (app *application) recordAlertSent(websiteID int, alertType string) error {
 
 // Check if we should send an alert based on timing rules
 func (app *application) shouldSendAlert(websiteID int, alertType string) (bool, error) {
-	var lastSent time.Time
 	var count int
 
 	// For "down" alerts, check if we sent one in the last hour
 	if alertType == "down" {
 		err := app.db.QueryRow(`
-			SELECT COUNT(*), MAX(sent_at) 
+			SELECT COUNT(*) 
 			FROM alert_history 
 			WHERE website_id = ? AND alert_type = 'down' 
-			AND sent_at > datetime('now', '-1 hour')`, websiteID).Scan(&count, &lastSent)
+			AND sent_at > datetime('now', '-1 hour')`, websiteID).Scan(&count)
 
 		if err != nil && err.Error() != "sql: no rows in result set" {
 			return false, fmt.Errorf("failed to check alert history: %w", err)
@@ -232,10 +254,10 @@ func (app *application) shouldSendAlert(websiteID int, alertType string) (bool, 
 	// For "recovery" alerts, check if we sent one in the last 24 hours
 	if alertType == "recovery" {
 		err := app.db.QueryRow(`
-			SELECT COUNT(*), MAX(sent_at) 
+			SELECT COUNT(*) 
 			FROM alert_history 
 			WHERE website_id = ? AND alert_type = 'recovery' 
-			AND sent_at > datetime('now', '-24 hours')`, websiteID).Scan(&count, &lastSent)
+			AND sent_at > datetime('now', '-24 hours')`, websiteID).Scan(&count)
 
 		if err != nil && err.Error() != "sql: no rows in result set" {
 			return false, fmt.Errorf("failed to check alert history: %w", err)
