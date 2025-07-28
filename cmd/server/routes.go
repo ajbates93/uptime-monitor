@@ -15,9 +15,12 @@ func (app *application) routes() http.Handler {
 	mux.Use(middleware.RealIP)
 	mux.Use(middleware.Logger)
 
+	// Web routes
+	mux.Get("/", app.dashboardHandler)
+
+	// API routes
 	mux.Group(func(r chi.Router) {
 		r.Route("/api/v1", func(r chi.Router) {
-
 			r.Get("/healthcheck", app.healthcheckHandler)
 			r.Get("/websites", app.listWebsitesHandler)
 			r.Get("/websites/{id}", app.getWebsiteHandler)

@@ -1,4 +1,4 @@
-package main
+package models
 
 import "time"
 
@@ -20,4 +20,11 @@ type WebsiteStatus struct {
 	StatusCode   int       `json:"status_code"`
 	Error        string    `json:"error,omitempty"`
 	CheckedAt    time.Time `json:"checked_at"`
+}
+
+// DashboardWebsite combines Website with its current status for the web interface
+type DashboardWebsite struct {
+	Website   Website
+	Status    string
+	CheckedAt *time.Time
 }

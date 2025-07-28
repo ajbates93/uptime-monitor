@@ -1,14 +1,14 @@
-# run the api
+# run the server
 run:
-	go run ./cmd/api
+	go run ./cmd/server
 
-# build the api
+# build the server
 build:
-	go build -o bin/api cmd/api/main.go
+	go build -o bin/server cmd/server/main.go
 
-# run the api
-run-api: build
-	./bin/api
+# run the server
+run-server: build
+	./bin/server
 
 # clean the bin directory
 clean:
