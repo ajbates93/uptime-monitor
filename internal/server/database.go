@@ -9,29 +9,65 @@ import (
 
 // Database operations for websites
 func (s *Server) initDatabase() error {
-	// Create websites table
-	createWebsitesTable := `
-	CREATE TABLE IF NOT EXISTS websites (
+	// Create users table
+	createUsersTable := `
+	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		url TEXT NOT NULL UNIQUE,
-		name TEXT,
-		check_interval INTEGER DEFAULT 30,
-		is_active BOOLEAN DEFAULT 1,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		name TEXT NOT NULL,
+		email TEXT UNIQUE NOT NULL,
+		password_hash BYTEA NOT NULL,
+		activated BOOLEAN NOT NULL DEFAULT 1,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`
 
-	// Create uptime_checks table
+	// Create tokens table
+	createTokensTable := `
+	CREATE TABLE IF NOT EXISTS tokens (
+		hash BYTEA PRIMARY KEY,
+		user_id INTEGER NOT NULL,
+		expiry DATETIME NOT NULL,
+		scope TEXT NOT NULL,
+		FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+	);`
+
+	// Create permissions table
+	createPermissionsTable := `
+	CREATE TABLE IF NOT EXISTS permissions (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		code TEXT NOT NULL UNIQUE
+	);`
+
+	// Create users_permissions table
+	createUsersPermissionsTable := `
+	CREATE TABLE IF NOT EXISTS users_permissions (
+		user_id INTEGER NOT NULL,
+		permission_id INTEGER NOT NULL,
+		PRIMARY KEY (user_id, permission_id),
+		FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+		FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE CASCADE
+	);`
+
+	// Create uptime_websites table (renamed from websites)
+	createUptimeWebsitesTable := `
+	CREATE TABLE IF NOT EXISTS uptime_websites (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		url TEXT NOT NULL UNIQUE,
+		check_interval INTEGER DEFAULT 300,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`
+
+	// Create uptime_checks table (renamed from uptime_checks)
 	createUptimeChecksTable := `
 	CREATE TABLE IF NOT EXISTS uptime_checks (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		website_id INTEGER,
+		website_id INTEGER NOT NULL,
+		status TEXT NOT NULL,
+		response_time INTEGER,
 		status_code INTEGER,
-		response_time_ms INTEGER,
-		is_up BOOLEAN,
 		error_message TEXT,
 		checked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (website_id) REFERENCES websites (id)
+		FOREIGN KEY (website_id) REFERENCES uptime_websites (id) ON DELETE CASCADE
 	);`
 
 	// Create alert_history table to track when emails were sent
@@ -41,38 +77,64 @@ func (s *Server) initDatabase() error {
 		website_id INTEGER,
 		alert_type TEXT NOT NULL,
 		sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (website_id) REFERENCES websites (id)
+		FOREIGN KEY (website_id) REFERENCES uptime_websites (id) ON DELETE CASCADE
 	);`
 
-	_, err := s.db.Exec(createWebsitesTable)
-	if err != nil {
-		return fmt.Errorf("failed to create websites table: %w", err)
+	// Execute all table creation statements
+	tables := []struct {
+		name string
+		sql  string
+	}{
+		{"users", createUsersTable},
+		{"tokens", createTokensTable},
+		{"permissions", createPermissionsTable},
+		{"users_permissions", createUsersPermissionsTable},
+		{"uptime_websites", createUptimeWebsitesTable},
+		{"uptime_checks", createUptimeChecksTable},
+		{"alert_history", createAlertHistoryTable},
 	}
 
-	_, err = s.db.Exec(createUptimeChecksTable)
-	if err != nil {
-		return fmt.Errorf("failed to create uptime_checks table: %w", err)
-	}
-
-	_, err = s.db.Exec(createAlertHistoryTable)
-	if err != nil {
-		return fmt.Errorf("failed to create alert_history table: %w", err)
+	for _, table := range tables {
+		_, err := s.db.Exec(table.sql)
+		if err != nil {
+			return fmt.Errorf("failed to create %s table: %w", table.name, err)
+		}
 	}
 
 	return nil
 }
 
 func (s *Server) seedDatabase() error {
-	// Check if websites already exist
+	// Check if admin user already exists
 	var count int
-	err := s.db.QueryRow("SELECT COUNT(*) FROM websites").Scan(&count)
+	err := s.db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", "hello@alexbates.dev").Scan(&count)
 	if err != nil {
-		return fmt.Errorf("failed to check websites count: %w", err)
+		return fmt.Errorf("failed to check admin user: %w", err)
+	}
+
+	// If admin user doesn't exist, create it
+	if count == 0 {
+		// TODO: Get password from environment variable
+		// For now, use a default password that should be changed
+		passwordHash := []byte("$2a$12$default.password.hash.placeholder")
+
+		_, err := s.db.Exec("INSERT INTO users (name, email, password_hash, activated) VALUES (?, ?, ?, ?)",
+			"Alex Bates", "hello@alexbates.dev", passwordHash, true)
+		if err != nil {
+			return fmt.Errorf("failed to create admin user: %w", err)
+		}
+		s.logger.Info("Created admin user", "email", "hello@alexbates.dev")
+	}
+
+	// Check if uptime websites already exist
+	err = s.db.QueryRow("SELECT COUNT(*) FROM uptime_websites").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check uptime websites count: %w", err)
 	}
 
 	// If websites already exist, don't seed
 	if count > 0 {
-		s.logger.Info("Database already seeded, skipping...")
+		s.logger.Info("Uptime websites already seeded, skipping...")
 		return nil
 	}
 
@@ -88,11 +150,11 @@ func (s *Server) seedDatabase() error {
 
 	// Insert websites
 	for _, website := range websites {
-		_, err := s.db.Exec("INSERT INTO websites (url, name) VALUES (?, ?)", website.url, website.name)
+		_, err := s.db.Exec("INSERT INTO uptime_websites (url, name) VALUES (?, ?)", website.url, website.name)
 		if err != nil {
 			return fmt.Errorf("failed to insert website %s: %w", website.url, err)
 		}
-		s.logger.Info("Seeded website", "url", website.url, "name", website.name)
+		s.logger.Info("Seeded uptime website", "url", website.url, "name", website.name)
 	}
 
 	s.logger.Info("Database seeded successfully", "websites_added", len(websites))
@@ -103,7 +165,7 @@ func (s *Server) seedDatabase() error {
 func (s *Server) addWebsite(url, name string) error {
 	// Check if website already exists
 	var count int
-	err := s.db.QueryRow("SELECT COUNT(*) FROM websites WHERE url = ?", url).Scan(&count)
+	err := s.db.QueryRow("SELECT COUNT(*) FROM uptime_websites WHERE url = ?", url).Scan(&count)
 	if err != nil {
 		return fmt.Errorf("failed to check if website exists: %w", err)
 	}
@@ -113,7 +175,7 @@ func (s *Server) addWebsite(url, name string) error {
 	}
 
 	// Insert new website
-	_, err = s.db.Exec("INSERT INTO websites (url, name) VALUES (?, ?)", url, name)
+	_, err = s.db.Exec("INSERT INTO uptime_websites (url, name) VALUES (?, ?)", url, name)
 	if err != nil {
 		return fmt.Errorf("failed to insert website: %w", err)
 	}
@@ -124,7 +186,7 @@ func (s *Server) addWebsite(url, name string) error {
 
 // Get all active websites
 func (s *Server) GetActiveWebsites() ([]models.Website, error) {
-	rows, err := s.db.Query("SELECT id, url, name, check_interval, is_active, created_at, updated_at FROM websites WHERE is_active = 1")
+	rows, err := s.db.Query("SELECT id, url, name, check_interval, created_at FROM uptime_websites")
 	if err != nil {
 		return nil, fmt.Errorf("failed to query active websites: %w", err)
 	}
@@ -133,10 +195,12 @@ func (s *Server) GetActiveWebsites() ([]models.Website, error) {
 	var websites []models.Website
 	for rows.Next() {
 		var website models.Website
-		err := rows.Scan(&website.ID, &website.URL, &website.Name, &website.CheckInterval, &website.IsActive, &website.CreatedAt, &website.UpdatedAt)
+		err := rows.Scan(&website.ID, &website.URL, &website.Name, &website.CheckInterval, &website.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan website: %w", err)
 		}
+		website.IsActive = true               // All websites in the new schema are active
+		website.UpdatedAt = website.CreatedAt // Use created_at as updated_at for now
 		websites = append(websites, website)
 	}
 
@@ -146,19 +210,27 @@ func (s *Server) GetActiveWebsites() ([]models.Website, error) {
 // Get a website by ID
 func (s *Server) GetWebsiteByID(websiteID int) (*models.Website, error) {
 	var website models.Website
-	err := s.db.QueryRow("SELECT id, url, name, check_interval, is_active, created_at, updated_at FROM websites WHERE id = ?", websiteID).
-		Scan(&website.ID, &website.URL, &website.Name, &website.CheckInterval, &website.IsActive, &website.CreatedAt, &website.UpdatedAt)
+	err := s.db.QueryRow("SELECT id, url, name, check_interval, created_at FROM uptime_websites WHERE id = ?", websiteID).
+		Scan(&website.ID, &website.URL, &website.Name, &website.CheckInterval, &website.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get website by ID: %w", err)
 	}
+	website.IsActive = true               // All websites in the new schema are active
+	website.UpdatedAt = website.CreatedAt // Use created_at as updated_at for now
 	return &website, nil
 }
 
 // Store uptime check result
 func (s *Server) StoreUptimeCheck(websiteID int, statusCode int, responseTime int64, isUp bool, errorMsg string) error {
+	var status string
+	if isUp {
+		status = "up"
+	} else {
+		status = "down"
+	}
 
-	_, err := s.db.Exec("INSERT INTO uptime_checks (website_id, status_code, response_time_ms, is_up, error_message) VALUES (?, ?, ?, ?, ?)",
-		websiteID, statusCode, responseTime, isUp, errorMsg)
+	_, err := s.db.Exec("INSERT INTO uptime_checks (website_id, status, response_time, status_code, error_message) VALUES (?, ?, ?, ?, ?)",
+		websiteID, status, responseTime, statusCode, errorMsg)
 	if err != nil {
 		return fmt.Errorf("failed to store uptime check: %w", err)
 	}
@@ -168,7 +240,7 @@ func (s *Server) StoreUptimeCheck(websiteID int, statusCode int, responseTime in
 
 // Get uptime history for a website
 func (s *Server) getUptimeHistory(websiteID int, limit int) ([]models.WebsiteStatus, error) {
-	query := "SELECT id, website_id, status_code, response_time_ms, is_up, error_message, checked_at FROM uptime_checks WHERE website_id = ? ORDER BY checked_at DESC LIMIT ?"
+	query := "SELECT id, website_id, status_code, response_time, status, error_message, checked_at FROM uptime_checks WHERE website_id = ? ORDER BY checked_at DESC LIMIT ?"
 	rows, err := s.db.Query(query, websiteID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query uptime history: %w", err)
@@ -178,15 +250,9 @@ func (s *Server) getUptimeHistory(websiteID int, limit int) ([]models.WebsiteSta
 	var statuses []models.WebsiteStatus
 	for rows.Next() {
 		var status models.WebsiteStatus
-		var isUp bool
-		err := rows.Scan(&status.ID, &status.WebsiteID, &status.StatusCode, &status.ResponseTime, &isUp, &status.Error, &status.CheckedAt)
+		err := rows.Scan(&status.ID, &status.WebsiteID, &status.StatusCode, &status.ResponseTime, &status.Status, &status.Error, &status.CheckedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan status: %w", err)
-		}
-		if isUp {
-			status.Status = "up"
-		} else {
-			status.Status = "down"
 		}
 		statuses = append(statuses, status)
 	}
@@ -197,16 +263,10 @@ func (s *Server) getUptimeHistory(websiteID int, limit int) ([]models.WebsiteSta
 // Get the last status for a website
 func (s *Server) GetLastWebsiteStatus(websiteID int) (*models.WebsiteStatus, error) {
 	var status models.WebsiteStatus
-	var isUp bool
-	err := s.db.QueryRow("SELECT id, website_id, status_code, response_time_ms, is_up, error_message, checked_at FROM uptime_checks WHERE website_id = ? ORDER BY checked_at DESC LIMIT 1", websiteID).
-		Scan(&status.ID, &status.WebsiteID, &status.StatusCode, &status.ResponseTime, &isUp, &status.Error, &status.CheckedAt)
+	err := s.db.QueryRow("SELECT id, website_id, status_code, response_time, status, error_message, checked_at FROM uptime_checks WHERE website_id = ? ORDER BY checked_at DESC LIMIT 1", websiteID).
+		Scan(&status.ID, &status.WebsiteID, &status.StatusCode, &status.ResponseTime, &status.Status, &status.Error, &status.CheckedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get last website status: %w", err)
-	}
-	if isUp {
-		status.Status = "up"
-	} else {
-		status.Status = "down"
 	}
 	return &status, nil
 }
@@ -234,17 +294,16 @@ func (s *Server) ShouldSendAlert(websiteID int, alertType string) (bool, error) 
 // Get websites with their current status for the dashboard
 func (s *Server) getWebsitesWithStatus() ([]map[string]interface{}, error) {
 	query := `
-		SELECT w.id, w.url, w.name, w.check_interval, w.is_active, w.created_at, w.updated_at,
-			   uc.status_code, uc.response_time_ms, uc.is_up, uc.error_message, uc.checked_at
-		FROM websites w
+		SELECT w.id, w.url, w.name, w.check_interval, w.created_at,
+			   uc.status_code, uc.response_time, uc.status, uc.error_message, uc.checked_at
+		FROM uptime_websites w
 		LEFT JOIN (
-			SELECT website_id, status_code, response_time_ms, is_up, error_message, checked_at
+			SELECT website_id, status_code, response_time, status, error_message, checked_at
 			FROM uptime_checks
 			WHERE id IN (
 				SELECT MAX(id) FROM uptime_checks GROUP BY website_id
 			)
 		) uc ON w.id = uc.website_id
-		WHERE w.is_active = 1
 		ORDER BY w.name
 	`
 
@@ -259,13 +318,13 @@ func (s *Server) getWebsitesWithStatus() ([]map[string]interface{}, error) {
 		var website models.Website
 		var statusCode sql.NullInt64
 		var responseTime sql.NullInt64
-		var isUp sql.NullBool
+		var status sql.NullString
 		var errorMsg sql.NullString
 		var checkedAt sql.NullTime
 
 		err := rows.Scan(
-			&website.ID, &website.URL, &website.Name, &website.CheckInterval, &website.IsActive, &website.CreatedAt, &website.UpdatedAt,
-			&statusCode, &responseTime, &isUp, &errorMsg, &checkedAt,
+			&website.ID, &website.URL, &website.Name, &website.CheckInterval, &website.CreatedAt,
+			&statusCode, &responseTime, &status, &errorMsg, &checkedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan website with status: %w", err)
@@ -275,16 +334,11 @@ func (s *Server) getWebsitesWithStatus() ([]map[string]interface{}, error) {
 			"website": website,
 		}
 
+		website.IsActive = true               // All websites in new schema are active
+		website.UpdatedAt = website.CreatedAt // Use created_at as updated_at for now
+
 		if checkedAt.Valid {
-			status := "unknown"
-			if isUp.Valid {
-				if isUp.Bool {
-					status = "up"
-				} else {
-					status = "down"
-				}
-			}
-			result["status"] = status
+			result["status"] = status.String
 			result["checked_at"] = checkedAt.Time
 		} else {
 			result["status"] = "unknown"

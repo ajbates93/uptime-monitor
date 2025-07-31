@@ -155,7 +155,7 @@ func loadConfig() Config {
 		SMTP2GOAPIKey:  getEnvOrDefault("SMTP2GO_API_KEY", ""),
 		SMTP2GOSender:  getEnvOrDefault("SMTP2GO_SENDER", "Uptime Monitor <uptime@alexbates.dev>"),
 		AlertRecipient: getEnvOrDefault("ALERT_RECIPIENT", "ajbates93@gmail.com"),
-		DBPath:         getEnvOrDefault("DB_PATH", "./uptime_monitor.db"),
+		DBPath:         getEnvOrDefault("DB_PATH", "./ark.db"),
 	}
 
 	// Validate required environment variables
