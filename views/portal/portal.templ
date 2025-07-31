@@ -1,0 +1,131 @@
+package portal
+
+import (
+	"the-ark/internal/auth"
+	"the-ark/internal/core"
+)
+
+// Dashboard renders the main portal dashboard
+templ Dashboard(user *auth.User, featureStatus map[string]core.FeatureStatus) {
+	<!doctype html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>The Ark - Portal Dashboard</title>
+			<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
+			<link rel="stylesheet" href="/assets/css/portal.css"/>
+		</head>
+		<body>
+			<div class="portal-container">
+				<nav class="sidebar">
+					<div class="sidebar-header">
+						<h1>The Ark</h1>
+						<div class="user-info">
+							if !user.IsAnonymous() {
+								<span class="user-name">{ user.Name }</span>
+								<span class="user-email">{ user.Email }</span>
+							}
+						</div>
+					</div>
+					
+					<ul class="nav-menu">
+						<li><a href="/" class="nav-link active">Dashboard</a></li>
+						<li><a href="/uptime" class="nav-link">Uptime Monitor</a></li>
+						<li><a href="/server" class="nav-link">Server Monitoring</a></li>
+						<li><a href="/ssl" class="nav-link">SSL Tracker</a></li>
+						<li><a href="/logs" class="nav-link">Log Viewer</a></li>
+					</ul>
+					
+					if !user.IsAnonymous() {
+						<div class="sidebar-footer">
+							<button class="logout-btn" hx-post="/auth/logout" hx-target="body">Logout</button>
+						</div>
+					}
+				</nav>
+				
+				<main class="main-content">
+					<header class="content-header">
+						<h2>Portal Dashboard</h2>
+						if user.IsAnonymous() {
+							<a href="/auth/login" class="login-btn">Login</a>
+						}
+					</header>
+					
+					<div class="feature-grid">
+						for featureName, status := range featureStatus {
+							<div class="feature-card">
+								<div class="feature-header">
+									<h3>{ status.Name }</h3>
+									if status.Enabled {
+										<span class="feature-status enabled">
+											Enabled
+										</span>
+									} else {
+										<span class="feature-status disabled">
+											Disabled
+										</span>
+									}
+								</div>
+								<p class="feature-description">{ status.Description }</p>
+								if status.Enabled {
+									<div class="feature-actions">
+										if featureName == "uptime" {
+											<a href="/uptime" class="feature-link">Open</a>
+										} else if featureName == "server" {
+											<a href="/server" class="feature-link">Open</a>
+										} else if featureName == "ssl" {
+											<a href="/ssl" class="feature-link">Open</a>
+										} else if featureName == "logs" {
+											<a href="/logs" class="feature-link">Open</a>
+										} else {
+											<a href="/{ featureName }" class="feature-link">Open</a>
+										}
+									</div>
+								}
+							</div>
+						}
+					</div>
+				</main>
+			</div>
+		</body>
+	</html>
+}
+
+// LoginPage renders the login page
+templ LoginPage() {
+	<!doctype html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>The Ark - Login</title>
+			<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
+			<link rel="stylesheet" href="/assets/css/auth.css"/>
+		</head>
+		<body>
+			<div class="auth-container">
+				<div class="auth-card">
+					<div class="auth-header">
+						<h1>The Ark</h1>
+						<p>Portal Login</p>
+					</div>
+					
+					<form class="login-form" hx-post="/auth/login" hx-target="body">
+						<div class="form-group">
+							<label for="email">Email</label>
+							<input type="email" id="email" name="email" required/>
+						</div>
+						
+						<div class="form-group">
+							<label for="password">Password</label>
+							<input type="password" id="password" name="password" required/>
+						</div>
+						
+						<button type="submit" class="login-btn">Login</button>
+					</form>
+				</div>
+			</div>
+		</body>
+	</html>
+} 

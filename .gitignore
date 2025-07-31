@@ -37,6 +37,7 @@ temp/
 docs/
 
 deploy.sh
+main
 api
 bin
 the-ark
