@@ -1,6 +1,6 @@
 package handlers
 
-import "uptime-monitor/server/models"
+import "the-ark/internal/server/models"
 
 // ServerInterface defines the methods that handlers need from the server
 type ServerInterface interface {

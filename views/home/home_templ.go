@@ -9,8 +9,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"uptime-monitor/server/models"
-	"uptime-monitor/views/components"
+	"the-ark/internal/server/models"
+	"the-ark/views/components"
 )
 
 func Dashboard(websites []models.DashboardWebsite) templ.Component {

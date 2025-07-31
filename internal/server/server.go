@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"uptime-monitor/server/handlers"
-	"uptime-monitor/server/services/mailer"
-	"uptime-monitor/server/services/monitor"
+	"the-ark/internal/server/handlers"
+	"the-ark/internal/server/services/mailer"
+	"the-ark/internal/server/services/monitor"
 
 	"log/slog"
 

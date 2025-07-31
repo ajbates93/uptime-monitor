@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"net/http"
-	"uptime-monitor/server/models"
-	"uptime-monitor/views/home"
+	"the-ark/internal/server/models"
+	"the-ark/views/home"
 
 	"log/slog"
 )

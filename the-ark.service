@@ -1,0 +1,16 @@
+[Unit]
+Description=The Ark Portal
+After=network.target
+
+[Service]
+Type=simple
+User=nobody
+Group=nogroup
+ExecStart=/usr/local/bin/the-ark
+Restart=always
+RestartSec=5
+Environment=DB_PATH=/var/lib/the-ark/ark.db
+WorkingDirectory=/var/lib/the-ark
+
+[Install]
+WantedBy=multi-user.target

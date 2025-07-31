@@ -3,7 +3,7 @@ package main
 import (
 	"log/slog"
 	"os"
-	"uptime-monitor/server"
+	"the-ark/internal/server"
 
 	"github.com/joho/godotenv"
 )

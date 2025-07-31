@@ -33,7 +33,10 @@ Thumbs.db
 tmp/
 temp/ 
 
+# Documentation
+docs/
+
 deploy.sh
 api
 bin
-uptime-monitor
+the-ark

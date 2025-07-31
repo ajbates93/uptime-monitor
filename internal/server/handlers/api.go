@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"uptime-monitor/server/models"
-	"uptime-monitor/views/components"
+	"the-ark/internal/server/models"
+	"the-ark/views/components"
 
 	"log/slog"
 

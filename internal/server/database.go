@@ -3,8 +3,8 @@ package server
 import (
 	"database/sql"
 	"fmt"
-	"uptime-monitor/server/models"
-	"uptime-monitor/server/services/monitor"
+	"the-ark/internal/server/models"
+	"the-ark/internal/server/services/monitor"
 )
 
 // Database operations for websites

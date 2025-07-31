@@ -3,9 +3,9 @@ package monitor
 import (
 	"context"
 	"net/http"
+	"the-ark/internal/server/models"
+	"the-ark/internal/server/services/mailer"
 	"time"
-	"uptime-monitor/server/models"
-	"uptime-monitor/server/services/mailer"
 
 	"log/slog"
 )

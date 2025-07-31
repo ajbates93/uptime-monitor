@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"uptime-monitor/server/models"
+	"the-ark/internal/server/models"
 )
 
 // WebsiteGrid component for HTMX refresh

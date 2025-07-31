@@ -4,11 +4,11 @@ run:
 
 # build the server
 build:
-	go build -o bin/uptime-monitor cmd/main.go
+	go build -o bin/the-ark cmd/main.go
 
 # run the server
 run-server: build
-	./bin/uptime-monitor
+	./bin/the-ark
 
 # generate templ files
 generate:

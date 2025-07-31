@@ -1,4 +1,4 @@
-module uptime-monitor
+module the-ark
 
 go 1.24.5
 
