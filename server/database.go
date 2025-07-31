@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"uptime-monitor/server/models"
+	"uptime-monitor/server/services/monitor"
 )
 
 // Database operations for websites
@@ -294,4 +295,17 @@ func (s *Server) getWebsitesWithStatus() ([]map[string]interface{}, error) {
 	}
 
 	return results, nil
+}
+
+// CheckWebsite performs a manual check of a specific website
+func (s *Server) CheckWebsite(website models.Website) error {
+	// Import the monitor package to use its check logic
+	monitor := monitor.New(s.logger, s.mailer, monitor.MonitorConfig{
+		AlertRecipient: s.config.AlertRecipient,
+	})
+
+	// Perform the check
+	monitor.CheckWebsite(website, s)
+
+	return nil
 }

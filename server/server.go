@@ -103,12 +103,17 @@ func (s *Server) setupRoutes() {
 	// Web routes
 	mux.Get("/", webHandler.Dashboard)
 
+	// Static assets
+	mux.Get("/assets/*", handlers.StaticHandler)
+
 	// API routes
 	mux.Group(func(r chi.Router) {
 		r.Route("/api/v1", func(r chi.Router) {
 			r.Get("/healthcheck", apiHandler.Healthcheck)
+			r.Get("/dashboard", apiHandler.GetDashboard)
 			r.Get("/websites", apiHandler.ListWebsites)
 			r.Get("/websites/{id}", apiHandler.GetWebsite)
+			r.Post("/websites/{id}/check", apiHandler.CheckWebsite)
 		})
 	})
 

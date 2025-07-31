@@ -76,12 +76,12 @@ func (m *Monitor) checkAllWebsites(db Database) {
 	}
 
 	for _, website := range websites {
-		m.checkWebsite(website, db)
+		m.CheckWebsite(website, db)
 	}
 }
 
 // Check a single website
-func (m *Monitor) checkWebsite(website models.Website, db Database) {
+func (m *Monitor) CheckWebsite(website models.Website, db Database) {
 	start := time.Now()
 	resp, err := http.Get(website.URL)
 	responseTime := time.Since(start).Milliseconds()

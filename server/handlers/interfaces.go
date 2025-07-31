@@ -7,4 +7,5 @@ type ServerInterface interface {
 	GetActiveWebsites() ([]models.Website, error)
 	GetLastWebsiteStatus(websiteID int) (*models.WebsiteStatus, error)
 	GetWebsiteByID(websiteID int) (*models.Website, error)
+	CheckWebsite(website models.Website) error
 }
