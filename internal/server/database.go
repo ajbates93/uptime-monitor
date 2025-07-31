@@ -3,8 +3,11 @@ package server
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"the-ark/internal/server/models"
 	"the-ark/internal/server/services/monitor"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Database operations for websites
@@ -114,12 +117,20 @@ func (s *Server) seedDatabase() error {
 
 	// If admin user doesn't exist, create it
 	if count == 0 {
-		// TODO: Get password from environment variable
-		// For now, use a default password that should be changed
-		passwordHash := []byte("$2a$12$default.password.hash.placeholder")
+		// Get password from environment variable
+		adminPassword := os.Getenv("ARK_ADMIN_PASSWORD")
+		if adminPassword == "" {
+			return fmt.Errorf("ARK_ADMIN_PASSWORD environment variable is required")
+		}
 
-		_, err := s.db.Exec("INSERT INTO users (name, email, password_hash, activated) VALUES (?, ?, ?, ?)",
-			"Alex Bates", "hello@alexbates.dev", passwordHash, true)
+		// Hash the password
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(adminPassword), 12)
+		if err != nil {
+			return fmt.Errorf("failed to hash admin password: %w", err)
+		}
+
+		_, err = s.db.Exec("INSERT INTO users (name, email, password_hash, activated) VALUES (?, ?, ?, ?)",
+			"Alex Bates", "hello@alexbates.dev", hashedPassword, true)
 		if err != nil {
 			return fmt.Errorf("failed to create admin user: %w", err)
 		}
