@@ -15,15 +15,21 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/mattn/go-sqlite3"
+
+	"the-ark/internal/auth"
+	"the-ark/internal/core"
 )
 
 type Server struct {
-	config  Config
-	logger  *slog.Logger
-	db      *sql.DB
-	mailer  mailer.Mailer
-	monitor *monitor.Monitor
-	server  *http.Server
+	config      Config
+	logger      *slog.Logger
+	coreLogger  *core.Logger
+	db          *sql.DB
+	mailer      mailer.Mailer
+	monitor     *monitor.Monitor
+	authService *auth.Service
+	registry    *core.Registry
+	server      *http.Server
 }
 
 type Config struct {
@@ -60,12 +66,20 @@ func New(logger *slog.Logger) *Server {
 	}
 	monitor := monitor.New(logger, mailer, monitorConfig)
 
+	// Initialize core components
+	coreLogger := core.NewLogger()
+	authService := auth.NewService(coreLogger, db)
+	registry := core.NewRegistry(coreLogger)
+
 	srv := &Server{
-		config:  config,
-		logger:  logger,
-		db:      db,
-		mailer:  mailer,
-		monitor: monitor,
+		config:      config,
+		logger:      logger,
+		coreLogger:  coreLogger,
+		db:          db,
+		mailer:      mailer,
+		monitor:     monitor,
+		authService: authService,
+		registry:    registry,
 	}
 
 	// Initialize database tables
@@ -90,6 +104,7 @@ func (s *Server) setupRoutes() {
 	// Initialize handlers
 	webHandler := handlers.NewWebHandler(s.logger, s)
 	apiHandler := handlers.NewAPIHandler(s.logger, s)
+	portalHandler := handlers.NewPortalHandler(s.coreLogger, s.registry, s.authService)
 
 	// Create router
 	mux := chi.NewRouter()
@@ -99,21 +114,58 @@ func (s *Server) setupRoutes() {
 	mux.Use(middleware.RequestID)
 	mux.Use(middleware.RealIP)
 	mux.Use(middleware.Logger)
+	mux.Use(auth.WebAuthMiddleware(s.authService)) // Add web auth middleware
 
-	// Web routes
-	mux.Get("/", webHandler.Dashboard)
+	// Portal routes (main dashboard)
+	mux.Get("/", portalHandler.DashboardHandler)
+	mux.Get("/auth/login", portalHandler.LoginPageHandler)
+	mux.Post("/auth/login", s.authService.LoginHandler)
+	mux.Post("/auth/logout", s.authService.LogoutHandler)
+
+	// Health check
+	mux.Get("/health", portalHandler.HealthCheckHandler)
 
 	// Static assets
 	mux.Get("/assets/*", handlers.StaticHandler)
 
-	// API routes
+	// Protected routes (require authentication)
 	mux.Group(func(r chi.Router) {
+		r.Use(auth.RequireAuthentication)
+
+		// Uptime monitoring routes
+		r.Route("/uptime", func(r chi.Router) {
+			r.Get("/", webHandler.Dashboard) // Legacy uptime dashboard
+			r.Get("/websites", apiHandler.ListWebsites)
+			r.Get("/websites/{id}", apiHandler.GetWebsite)
+			r.Post("/websites/{id}/check", apiHandler.CheckWebsite)
+		})
+
+		// API routes
 		r.Route("/api/v1", func(r chi.Router) {
 			r.Get("/healthcheck", apiHandler.Healthcheck)
 			r.Get("/dashboard", apiHandler.GetDashboard)
 			r.Get("/websites", apiHandler.ListWebsites)
 			r.Get("/websites/{id}", apiHandler.GetWebsite)
 			r.Post("/websites/{id}/check", apiHandler.CheckWebsite)
+		})
+
+		// Future feature routes (placeholder)
+		r.Route("/server", func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "Server monitoring coming soon", http.StatusNotImplemented)
+			})
+		})
+
+		r.Route("/ssl", func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "SSL certificate tracker coming soon", http.StatusNotImplemented)
+			})
+		})
+
+		r.Route("/logs", func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "Log viewer coming soon", http.StatusNotImplemented)
+			})
 		})
 	})
 

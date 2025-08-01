@@ -38,7 +38,7 @@ func (m *Middleware) Authenticate(next http.Handler) http.Handler {
 
 		// If no Authorization header, set anonymous user
 		if authorizationHeader == "" {
-			r = m.contextSetUser(r, AnonymousUser)
+			r = contextSetUser(r, AnonymousUser)
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -66,7 +66,7 @@ func (m *Middleware) Authenticate(next http.Handler) http.Handler {
 		}
 
 		// Set user in request context
-		r = m.contextSetUser(r, user)
+		r = contextSetUser(r, user)
 		next.ServeHTTP(w, r)
 	})
 }
@@ -74,7 +74,7 @@ func (m *Middleware) Authenticate(next http.Handler) http.Handler {
 // RequireAuthenticatedUser middleware requires an authenticated user
 func (m *Middleware) RequireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := m.contextGetUser(r)
+		user := contextGetUser(r)
 
 		if user.IsAnonymous() {
 			m.authenticationRequiredResponse(w, r)
@@ -88,7 +88,7 @@ func (m *Middleware) RequireAuthenticatedUser(next http.HandlerFunc) http.Handle
 // RequireActivatedUser middleware requires an activated user
 func (m *Middleware) RequireActivatedUser(next http.HandlerFunc) http.HandlerFunc {
 	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := m.contextGetUser(r)
+		user := contextGetUser(r)
 
 		if user.IsAnonymous() {
 			m.authenticationRequiredResponse(w, r)
@@ -109,7 +109,7 @@ func (m *Middleware) RequireActivatedUser(next http.HandlerFunc) http.HandlerFun
 // RequirePermission middleware requires a specific permission
 func (m *Middleware) RequirePermission(permissionCode string, next http.HandlerFunc) http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		user := m.contextGetUser(r)
+		user := contextGetUser(r)
 
 		hasPermission, err := m.service.UserHasPermission(user.ID, permissionCode)
 		if err != nil {
@@ -130,12 +130,12 @@ func (m *Middleware) RequirePermission(permissionCode string, next http.HandlerF
 }
 
 // Context management
-func (m *Middleware) contextSetUser(r *http.Request, user *User) *http.Request {
+func contextSetUser(r *http.Request, user *User) *http.Request {
 	ctx := context.WithValue(r.Context(), userContextKey, user)
 	return r.WithContext(ctx)
 }
 
-func (m *Middleware) contextGetUser(r *http.Request) *User {
+func contextGetUser(r *http.Request) *User {
 	user, ok := r.Context().Value(userContextKey).(*User)
 	if !ok {
 		panic("missing user value in request context")
@@ -167,4 +167,48 @@ func (m *Middleware) notPermittedResponse(w http.ResponseWriter, r *http.Request
 func (m *Middleware) serverErrorResponse(w http.ResponseWriter, r *http.Request) {
 	core.WriteErrorResponse(w, http.StatusInternalServerError, core.NewAppError(
 		core.ErrCodeInternal, "Internal server error", nil))
+}
+
+// RequireAuthentication middleware for Chi router
+func RequireAuthentication(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := GetUserFromContext(r)
+
+		if user.IsAnonymous() {
+			// Redirect to login page for web requests
+			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// WebAuthMiddleware adds user to request context from cookies
+func WebAuthMiddleware(service *Service) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Get auth token from cookie
+			cookie, err := r.Cookie("auth_token")
+			if err != nil {
+				// No cookie, set anonymous user
+				r = contextSetUser(r, AnonymousUser)
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Validate token
+			user, err := service.ValidateToken(cookie.Value)
+			if err != nil {
+				// Invalid token, set anonymous user
+				r = contextSetUser(r, AnonymousUser)
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Set user in request context
+			r = contextSetUser(r, user)
+			next.ServeHTTP(w, r)
+		})
+	}
 }
