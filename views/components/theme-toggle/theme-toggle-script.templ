@@ -1,0 +1,32 @@
+package themetoggle
+
+// ThemeToggleScript provides the JavaScript for theme toggle functionality
+templ ThemeToggleScript() {
+	<script>
+		// Theme toggle functionality
+		document.addEventListener('DOMContentLoaded', function() {
+			console.log('DOM loaded, checking for theme toggle button...');
+			const button = document.getElementById('theme-toggle');
+			console.log('Theme toggle button found:', button);
+			
+			if (button) {
+				button.addEventListener('click', function() {
+					console.log('Theme toggle clicked!');
+					const html = document.documentElement;
+					const currentTheme = localStorage.getItem('theme') || 'light';
+					const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+					console.log('Switching from', currentTheme, 'to', newTheme);
+					localStorage.setItem('theme', newTheme);
+					if (newTheme === 'dark') {
+						html.classList.add('dark');
+						console.log('Added dark class to html element');
+					} else {
+						html.classList.remove('dark');
+						console.log('Removed dark class from html element');
+					}
+					console.log('Current html classes:', html.className);
+				});
+			}
+		});
+	</script>
+} 

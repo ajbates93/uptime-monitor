@@ -1,0 +1,61 @@
+package layouts
+
+type BaseLayoutProps struct {
+	Title       string
+	Description string
+}
+
+// BaseLayout provides a common layout with Tailwind configuration
+templ BaseLayout(props BaseLayoutProps) {
+	<!doctype html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ props.Title }</title>
+			if props.Description != "" {
+				<meta name="description" content={ props.Description }/>
+			}
+			
+			<!-- Common scripts and styles -->
+			<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
+			<script src="https://cdn.tailwindcss.com"></script>
+			<script>
+				// Configure Tailwind for dark mode
+				tailwind.config = {
+					darkMode: 'class',
+					theme: {
+						extend: {
+							colors: {
+								ark: {
+									50: '#f0f9ff',
+									100: '#e0f2fe',
+									200: '#bae6fd',
+									300: '#7dd3fc',
+									400: '#38bdf8',
+									500: '#0ea5e9',
+									600: '#0284c7',
+									700: '#0369a1',
+									800: '#075985',
+									900: '#0c4a6e',
+								}
+							}
+						}
+					}
+				};
+			</script>
+			<script>
+				// Prevent flash of unstyled content (FOUC) for dark mode
+				(function() {
+					const theme = localStorage.getItem('theme') || 'light';
+					if (theme === 'dark') {
+						document.documentElement.classList.add('dark');
+					}
+				})();
+			</script>
+		</head>
+		<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+			{ children... }
+		</body>
+	</html>
+} 
