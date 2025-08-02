@@ -82,7 +82,7 @@ templ Dashboard(user *auth.User, featureStatus map[string]core.FeatureStatus) {
 				<!-- Main Content -->
 				<main class="flex-1 p-8">
 					<header class="mb-8">
-						<h2 class="text-3xl font-bold text-gray-900">Portal Dashboard for { user.ID }</h2>
+						<h2 class="text-3xl font-bold text-gray-900">Portal Dashboard</h2>
 						if user.IsAnonymous() {
 							<div class="mt-4">
 								@button.Button(button.Props{
