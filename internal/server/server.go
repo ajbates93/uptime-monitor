@@ -21,7 +21,7 @@ import (
 )
 
 type Server struct {
-	config      Config
+	config      *core.Config
 	logger      *slog.Logger
 	coreLogger  *core.Logger
 	db          *sql.DB
@@ -31,19 +31,16 @@ type Server struct {
 	server      *http.Server
 }
 
-type Config struct {
-	Port           int
-	SMTP2GOAPIKey  string
-	SMTP2GOSender  string
-	AlertRecipient string
-	DBPath         string
-}
-
 func New(logger *slog.Logger) *Server {
-	config := loadConfig()
+	// Load configuration using the new core config system
+	config, err := core.LoadConfig()
+	if err != nil {
+		logger.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
+	}
 
 	// Initialize database
-	dbPath := config.DBPath
+	dbPath := config.Database.Path
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		logger.Error("Failed to open database", "error", err)
@@ -56,20 +53,24 @@ func New(logger *slog.Logger) *Server {
 		os.Exit(1)
 	}
 
-	// Initialize mailer
-	mailer := mailer.New(config.SMTP2GOAPIKey, config.SMTP2GOSender)
+	// Initialize mailer using uptime config
+	uptimeConfig := config.Features.Uptime
+	mailer := mailer.New(uptimeConfig.SMTP2GOAPIKey, uptimeConfig.SMTP2GOSender)
 
 	// Initialize core components
 	coreLogger := core.NewLogger()
 	coreDB := core.NewDatabase(db, coreLogger)
-	authService := auth.NewService(coreLogger, db)
+	authService := auth.NewService(coreLogger, db, config)
 	registry := core.NewRegistry(coreLogger)
 
-	// Initialize uptime feature
-	uptimeConfig := uptime.Config{
-		AlertRecipient: config.AlertRecipient,
+	// Initialize uptime feature if enabled
+	var uptimeFeature *uptime.Feature
+	if config.IsFeatureEnabled("uptime") {
+		uptimeConfig := uptime.Config{
+			AlertRecipient: config.Features.Uptime.AlertRecipient,
+		}
+		uptimeFeature = uptime.NewFeature(logger, coreDB, mailer, uptimeConfig)
 	}
-	uptimeFeature := uptime.NewFeature(logger, coreDB, mailer, uptimeConfig)
 
 	srv := &Server{
 		config:      config,
@@ -93,13 +94,15 @@ func New(logger *slog.Logger) *Server {
 		os.Exit(1)
 	}
 
-	// Register features
-	if err := registry.Register(uptimeFeature); err != nil {
-		logger.Error("Failed to register uptime feature", "error", err)
-		os.Exit(1)
+	// Register features if enabled
+	if uptimeFeature != nil {
+		if err := registry.Register(uptimeFeature); err != nil {
+			logger.Error("Failed to register uptime feature", "error", err)
+			os.Exit(1)
+		}
 	}
 
-	// Setup HTTP server
+	// Setup routes
 	srv.setupRoutes()
 
 	return srv
@@ -174,7 +177,7 @@ func (s *Server) setupRoutes() {
 
 	// Create HTTP server
 	s.server = &http.Server{
-		Addr:    fmt.Sprintf(":%d", s.config.Port),
+		Addr:    fmt.Sprintf("%s:%d", s.config.Server.Host, s.config.Server.Port),
 		Handler: mux,
 	}
 }
@@ -188,7 +191,7 @@ func (s *Server) Start() error {
 	}
 
 	// Start HTTP server
-	s.logger.Info("Starting server", "port", s.config.Port)
+	s.logger.Info("Starting server", "host", s.config.Server.Host, "port", s.config.Server.Port)
 
 	return s.server.ListenAndServe()
 }
@@ -210,28 +213,4 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func loadConfig() Config {
-	config := Config{
-		Port:           4000,
-		SMTP2GOAPIKey:  getEnvOrDefault("SMTP2GO_API_KEY", ""),
-		SMTP2GOSender:  getEnvOrDefault("SMTP2GO_SENDER", "Uptime Monitor <uptime@alexbates.dev>"),
-		AlertRecipient: getEnvOrDefault("ALERT_RECIPIENT", "ajbates93@gmail.com"),
-		DBPath:         getEnvOrDefault("DB_PATH", "./ark.db"),
-	}
-
-	// Validate required environment variables
-	if config.SMTP2GOAPIKey == "" {
-		panic("SMTP2GO_API_KEY environment variable is required")
-	}
-
-	return config
-}
-
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }

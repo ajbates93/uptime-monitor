@@ -19,7 +19,7 @@ type Service struct {
 }
 
 // NewService creates a new authentication service
-func NewService(logger *core.Logger, db *sql.DB) *Service {
+func NewService(logger *core.Logger, db *sql.DB, config *core.Config) *Service {
 	// Convert sql.DB to core.Database
 	coreDB := core.NewDatabase(db, logger)
 
@@ -28,6 +28,7 @@ func NewService(logger *core.Logger, db *sql.DB) *Service {
 		tokens:      NewTokenModel(coreDB, logger),
 		permissions: NewPermissionModel(coreDB, logger),
 		logger:      logger,
+		config:      config,
 	}
 }
 

@@ -366,7 +366,7 @@ func (s *Server) getWebsitesWithStatus() ([]map[string]interface{}, error) {
 func (s *Server) CheckWebsite(website models.Website) error {
 	// Import the monitor package to use its check logic
 	monitor := monitor.New(s.logger, s.mailer, monitor.MonitorConfig{
-		AlertRecipient: s.config.AlertRecipient,
+		AlertRecipient: s.config.Features.Uptime.AlertRecipient,
 	})
 
 	// Perform the check
