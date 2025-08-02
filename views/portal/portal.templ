@@ -3,6 +3,9 @@ package portal
 import (
 	"the-ark/internal/auth"
 	"the-ark/internal/core"
+	"the-ark/views/components/badge"
+	"the-ark/views/components/button"
+	"the-ark/views/components/card"
 )
 
 // Dashboard renders the main portal dashboard
@@ -15,81 +18,143 @@ templ Dashboard(user *auth.User, featureStatus map[string]core.FeatureStatus) {
 			<title>The Ark - Portal Dashboard</title>
 			<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
 			<link rel="stylesheet" href="/assets/css/portal.css"/>
+			<script src="https://cdn.tailwindcss.com"></script>
 		</head>
-		<body>
-			<div class="portal-container">
-				<nav class="sidebar">
-					<div class="sidebar-header">
-						<h1>The Ark</h1>
-						<div class="user-info">
-							if !user.IsAnonymous() {
-								<span class="user-name">{ user.Name }</span>
-								<span class="user-email">{ user.Email }</span>
-							}
-						</div>
+		<body class="bg-gray-50">
+			<div class="min-h-screen flex">
+				<!-- Sidebar -->
+				<nav class="w-64 bg-white shadow-lg">
+					<div class="p-6">
+						<h1 class="text-2xl font-bold text-gray-900">The Ark</h1>
+						if !user.IsAnonymous() {
+							<div class="mt-4 p-3 bg-gray-50 rounded-lg">
+								<div class="text-sm font-medium text-gray-900">{ user.Name }</div>
+								<div class="text-sm text-gray-500">{ user.Email }</div>
+							</div>
+						}
 					</div>
 					
-					<ul class="nav-menu">
-						<li><a href="/" class="nav-link active">Dashboard</a></li>
-						<li><a href="/uptime" class="nav-link">Uptime Monitor</a></li>
-						<li><a href="/server" class="nav-link">Server Monitoring</a></li>
-						<li><a href="/ssl" class="nav-link">SSL Tracker</a></li>
-						<li><a href="/logs" class="nav-link">Log Viewer</a></li>
+					<ul class="px-4 space-y-2">
+						<li>
+							<a href="/" class="flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">
+								Dashboard
+							</a>
+						</li>
+						<li>
+							<a href="/uptime" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
+								Uptime Monitor
+							</a>
+						</li>
+						<li>
+							<a href="/server" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
+								Server Monitoring
+							</a>
+						</li>
+						<li>
+							<a href="/ssl" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
+								SSL Tracker
+							</a>
+						</li>
+						<li>
+							<a href="/logs" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
+								Log Viewer
+							</a>
+						</li>
 					</ul>
 					
 					if !user.IsAnonymous() {
-						<div class="sidebar-footer">
-							<button class="logout-btn" hx-post="/auth/logout" hx-target="body">Logout</button>
+						<div class="absolute bottom-0 w-64 p-4">
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size: button.SizeSm,
+								Class: "w-full",
+								Attributes: templ.Attributes{
+									"hx-post": "/auth/logout",
+									"hx-target": "body",
+								},
+							}) {
+								Logout
+							}
 						</div>
 					}
 				</nav>
 				
-				<main class="main-content">
-					<header class="content-header">
-						<h2>Portal Dashboard</h2>
+				<!-- Main Content -->
+				<main class="flex-1 p-8">
+					<header class="mb-8">
+						<h2 class="text-3xl font-bold text-gray-900">Portal Dashboard</h2>
 						if user.IsAnonymous() {
-							<a href="/auth/login" class="login-btn">Login</a>
+							<div class="mt-4">
+								@button.Button(button.Props{
+									Variant: button.VariantDefault,
+									Href: "/auth/login",
+								}) {
+									Login
+								}
+							</div>
 						}
 					</header>
 					
-					<div class="feature-grid">
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 						for featureName, status := range featureStatus {
-							<div class="feature-card">
-								<div class="feature-header">
-									<h3>{ status.Name }</h3>
-									if status.Enabled {
-										<span class="feature-status enabled">
-											Enabled
-										</span>
-									} else {
-										<span class="feature-status disabled">
-											Disabled
-										</span>
-									}
-								</div>
-								<p class="feature-description">{ status.Description }</p>
-								if status.Enabled {
-									<div class="feature-actions">
-										if featureName == "uptime" {
-											<a href="/uptime" class="feature-link">Open</a>
-										} else if featureName == "server" {
-											<a href="/server" class="feature-link">Open</a>
-										} else if featureName == "ssl" {
-											<a href="/ssl" class="feature-link">Open</a>
-										} else if featureName == "logs" {
-											<a href="/logs" class="feature-link">Open</a>
+							@card.Card(card.Props{
+								Class: "hover:shadow-lg transition-shadow",
+							}) {
+								@card.Header() {
+									<div class="flex items-center justify-between">
+										<h3 class="text-lg font-semibold">{ status.Name }</h3>
+										if status.Enabled {
+											@badge.Badge(badge.Props{
+												Variant: badge.VariantDefault,
+											}) {
+												Enabled
+											}
 										} else {
-											<a href="/{ featureName }" class="feature-link">Open</a>
+											@badge.Badge(badge.Props{
+												Variant: badge.VariantSecondary,
+											}) {
+												Disabled
+											}
 										}
 									</div>
 								}
-							</div>
+								@card.Content() {
+									<p class="text-gray-600">{ status.Description }</p>
+								}
+								if status.Enabled {
+									@card.Footer() {
+										@button.Button(button.Props{
+											Variant: button.VariantOutline,
+											Size: button.SizeSm,
+											Href: getFeatureUrl(featureName),
+										}) {
+											Open
+										}
+									}
+								}
+							}
 						}
 					</div>
 				</main>
 			</div>
 		</body>
 	</html>
+}
+
+// Helper function to get feature URLs
+func getFeatureUrl(featureName string) string {
+	switch featureName {
+	case "uptime":
+		return "/uptime"
+	case "server":
+		return "/server"
+	case "ssl":
+		return "/ssl"
+	case "logs":
+		return "/logs"
+	default:
+		return "/" + featureName
+	}
 }
 
 // LoginPage renders the login page
@@ -100,31 +165,37 @@ templ LoginPage() {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>The Ark - Login</title>
-			<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
-			<link rel="stylesheet" href="/assets/css/auth.css"/>
+			<script src="https://cdn.tailwindcss.com"></script>
 		</head>
-		<body>
-			<div class="auth-container">
-				<div class="auth-card">
-					<div class="auth-header">
-						<h1>The Ark</h1>
-						<p>Portal Login</p>
-					</div>
-					
-					<form class="login-form" hx-post="/auth/login" hx-target="body">
-						<div class="form-group">
-							<label for="email">Email</label>
-							<input type="email" id="email" name="email" required/>
-						</div>
-						
-						<div class="form-group">
-							<label for="password">Password</label>
-							<input type="password" id="password" name="password" required/>
-						</div>
-						
-						<button type="submit" class="login-btn">Login</button>
-					</form>
+		<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+			<div class="max-w-md w-full space-y-8">
+				<div class="text-center">
+					<h1 class="text-3xl font-bold text-gray-900">The Ark</h1>
+					<p class="mt-2 text-gray-600">Sign in to your account</p>
 				</div>
+				
+				@card.Card() {
+					@card.Content() {
+						<form method="POST" action="/auth/login" class="space-y-4">
+							<div>
+								<label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+								<input type="email" id="email" name="email" required 
+									class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+							</div>
+							<div>
+								<label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+								<input type="password" id="password" name="password" required 
+									class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+							</div>
+							@button.Button(button.Props{
+								Type: button.TypeSubmit,
+								Class: "w-full",
+							}) {
+								Sign In
+							}
+						</form>
+					}
+				}
 			</div>
 		</body>
 	</html>

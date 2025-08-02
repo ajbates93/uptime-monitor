@@ -1,0 +1,7 @@
+{
+  "componentsDir": "views/components",
+  "utilsDir": "views/utils",
+  "moduleName": "the-ark",
+  "jsDir": "views/assets",
+  "jsPublicPath": "/views/assets"
+}
