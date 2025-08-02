@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"the-ark/internal/features/uptime"
 	"the-ark/internal/server/handlers"
 	"the-ark/internal/server/services/mailer"
-	"the-ark/internal/server/services/monitor"
 
 	"log/slog"
 
@@ -26,7 +26,6 @@ type Server struct {
 	coreLogger  *core.Logger
 	db          *sql.DB
 	mailer      mailer.Mailer
-	monitor     *monitor.Monitor
 	authService *auth.Service
 	registry    *core.Registry
 	server      *http.Server
@@ -60,16 +59,17 @@ func New(logger *slog.Logger) *Server {
 	// Initialize mailer
 	mailer := mailer.New(config.SMTP2GOAPIKey, config.SMTP2GOSender)
 
-	// Initialize monitor
-	monitorConfig := monitor.MonitorConfig{
-		AlertRecipient: config.AlertRecipient,
-	}
-	monitor := monitor.New(logger, mailer, monitorConfig)
-
 	// Initialize core components
 	coreLogger := core.NewLogger()
+	coreDB := core.NewDatabase(db, coreLogger)
 	authService := auth.NewService(coreLogger, db)
 	registry := core.NewRegistry(coreLogger)
+
+	// Initialize uptime feature
+	uptimeConfig := uptime.Config{
+		AlertRecipient: config.AlertRecipient,
+	}
+	uptimeFeature := uptime.NewFeature(logger, coreDB, mailer, uptimeConfig)
 
 	srv := &Server{
 		config:      config,
@@ -77,7 +77,6 @@ func New(logger *slog.Logger) *Server {
 		coreLogger:  coreLogger,
 		db:          db,
 		mailer:      mailer,
-		monitor:     monitor,
 		authService: authService,
 		registry:    registry,
 	}
@@ -94,6 +93,12 @@ func New(logger *slog.Logger) *Server {
 		os.Exit(1)
 	}
 
+	// Register features
+	if err := registry.Register(uptimeFeature); err != nil {
+		logger.Error("Failed to register uptime feature", "error", err)
+		os.Exit(1)
+	}
+
 	// Setup HTTP server
 	srv.setupRoutes()
 
@@ -101,9 +106,7 @@ func New(logger *slog.Logger) *Server {
 }
 
 func (s *Server) setupRoutes() {
-	// Initialize handlers
-	webHandler := handlers.NewWebHandler(s.logger, s)
-	apiHandler := handlers.NewAPIHandler(s.logger, s)
+	// Initialize portal handler
 	portalHandler := handlers.NewPortalHandler(s.coreLogger, s.registry, s.authService)
 
 	// Create router
@@ -132,21 +135,19 @@ func (s *Server) setupRoutes() {
 	mux.Group(func(r chi.Router) {
 		r.Use(auth.RequireAuthentication)
 
-		// Uptime monitoring routes
-		r.Route("/uptime", func(r chi.Router) {
-			r.Get("/", webHandler.Dashboard) // Legacy uptime dashboard
-			r.Get("/websites", apiHandler.ListWebsites)
-			r.Get("/websites/{id}", apiHandler.GetWebsite)
-			r.Post("/websites/{id}/check", apiHandler.CheckWebsite)
-		})
+		// Feature routes - use the registry to get all feature routes
+		routes := s.registry.GetAllRoutes()
+		for _, route := range routes {
+			r.Method(route.Method, route.Path, route.Handler)
+		}
 
-		// API routes
+		// Legacy API routes (for backward compatibility)
 		r.Route("/api/v1", func(r chi.Router) {
-			r.Get("/healthcheck", apiHandler.Healthcheck)
-			r.Get("/dashboard", apiHandler.GetDashboard)
-			r.Get("/websites", apiHandler.ListWebsites)
-			r.Get("/websites/{id}", apiHandler.GetWebsite)
-			r.Post("/websites/{id}/check", apiHandler.CheckWebsite)
+			r.Get("/healthcheck", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"status": "ok"}`))
+			})
 		})
 
 		// Future feature routes (placeholder)
@@ -177,9 +178,12 @@ func (s *Server) setupRoutes() {
 }
 
 func (s *Server) Start() error {
-	// Start monitoring in background
+	// Initialize all features
 	ctx := context.Background()
-	s.monitor.Start(ctx, s)
+	if err := s.registry.InitAll(ctx); err != nil {
+		s.logger.Error("Failed to initialize features", "error", err)
+		return err
+	}
 
 	// Start HTTP server
 	s.logger.Info("Starting server", "port", s.config.Port)
@@ -189,6 +193,11 @@ func (s *Server) Start() error {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.logger.Info("Shutting down server...")
+
+	// Shutdown all features
+	if err := s.registry.ShutdownAll(ctx); err != nil {
+		s.logger.Error("Failed to shutdown features", "error", err)
+	}
 
 	if err := s.server.Shutdown(ctx); err != nil {
 		return fmt.Errorf("failed to shutdown HTTP server: %w", err)

@@ -1,0 +1,38 @@
+package uptime
+
+import (
+	"the-ark/internal/features/uptime/models"
+	"the-ark/views/components"
+)
+
+templ Dashboard(websites []models.DashboardWebsite) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>Uptime Monitor Dashboard</title>
+			<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
+			<link rel="stylesheet" href="/assets/css/dashboard.css"/>
+		</head>
+		<body>
+			<div class="container">
+				<div class="header">
+					<h1>Uptime Monitor Dashboard</h1>
+					<button 
+						class="refresh-btn" 
+						hx-get="/uptime/api/dashboard" 
+						hx-target=".website-grid" 
+						hx-swap="innerHTML"
+						hx-indicator="#refresh-indicator">
+						<span id="refresh-indicator" class="htmx-indicator">🔄</span>
+						<span>Refresh Dashboard</span>
+					</button>
+				</div>
+				<div class="website-grid">
+					@components.UptimeWebsiteGrid(websites)
+				</div>
+			</div>
+		</body>
+	</html>
+} 

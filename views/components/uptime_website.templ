@@ -1,0 +1,50 @@
+package components
+
+import (
+	"fmt"
+	"the-ark/internal/features/uptime/models"
+)
+
+// UptimeWebsiteGrid component for HTMX refresh
+templ UptimeWebsiteGrid(websites []models.DashboardWebsite) {
+	for _, website := range websites {
+		<div class="website-card">
+			<div class="website-name">{ website.Website.Name }</div>
+			<div class="website-url">{ website.Website.URL }</div>
+			<div class={ "status " + website.Status }>{ website.Status }</div>
+			if website.CheckedAt != nil {
+				<div class="last-checked">Last checked: { website.CheckedAt.Format("2006-01-02 15:04:05") }</div>
+			}
+			<button 
+				class="manual-check-btn" 
+				hx-post={ "/uptime/api/websites/" + fmt.Sprint(website.Website.ID) + "/check" }
+				hx-target="closest .website-card"
+				hx-swap="outerHTML"
+				hx-indicator={ "#check-indicator-" + fmt.Sprint(website.Website.ID) }>
+				<span id={ "check-indicator-" + fmt.Sprint(website.Website.ID) } class="htmx-indicator">🔄</span>
+				Check Now
+			</button>
+		</div>
+	}
+}
+
+// UptimeWebsiteCard component for individual website updates
+templ UptimeWebsiteCard(website models.DashboardWebsite) {
+	<div class="website-card">
+		<div class="website-name">{ website.Website.Name }</div>
+		<div class="website-url">{ website.Website.URL }</div>
+		<div class={ "status " + website.Status }>{ website.Status }</div>
+		if website.CheckedAt != nil {
+			<div class="last-checked">Last checked: { website.CheckedAt.Format("2006-01-02 15:04:05") }</div>
+		}
+		<button 
+			class="manual-check-btn" 
+			hx-post={ "/uptime/api/websites/" + fmt.Sprint(website.Website.ID) + "/check" }
+			hx-target="closest .website-card"
+			hx-swap="outerHTML"
+			hx-indicator={ "#check-indicator-" + fmt.Sprint(website.Website.ID) }>
+			<span id={ "check-indicator-" + fmt.Sprint(website.Website.ID) } class="htmx-indicator">🔄</span>
+			Check Now
+		</button>
+	</div>
+} 
