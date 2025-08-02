@@ -120,7 +120,6 @@ func (s *Server) setupRoutes() {
 	mux.Use(auth.WebAuthMiddleware(s.authService)) // Add web auth middleware
 
 	// Portal routes (main dashboard)
-	mux.Get("/", portalHandler.DashboardHandler)
 	mux.Get("/auth/login", portalHandler.LoginPageHandler)
 	mux.Post("/auth/login", s.authService.LoginHandler)
 	mux.Post("/auth/logout", s.authService.LogoutHandler)
@@ -134,6 +133,9 @@ func (s *Server) setupRoutes() {
 	// Protected routes (require authentication)
 	mux.Group(func(r chi.Router) {
 		r.Use(auth.RequireAuthentication)
+
+		// Portal dashboard (protected)
+		r.Get("/", portalHandler.DashboardHandler)
 
 		// Feature routes - use the registry to get all feature routes
 		routes := s.registry.GetAllRoutes()
