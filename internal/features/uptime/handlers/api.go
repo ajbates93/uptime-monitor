@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"the-ark/internal/features/uptime/models"
-	"the-ark/views/components"
+	"the-ark/views/uptime"
 
 	"log/slog"
 
@@ -91,9 +91,11 @@ func (h *APIHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Render just the website grid for HTMX
-	component := components.UptimeWebsiteGrid(dashboardWebsites)
-	component.Render(r.Context(), w)
+	// Render the new card format for HTMX
+	for _, website := range dashboardWebsites {
+		component := uptime.UptimeWebsiteCard(website)
+		component.Render(r.Context(), w)
+	}
 }
 
 func (h *APIHandler) CheckWebsite(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +123,22 @@ func (h *APIHandler) CheckWebsite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "check initiated"})
+	// Get the updated status after the check
+	status, err := h.server.GetLastWebsiteStatus(website.ID)
+	if err != nil {
+		h.logger.Error("Failed to get updated website status", "website_id", id, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Create dashboard website with updated status
+	dashboardWebsite := models.DashboardWebsite{
+		Website:   *website,
+		Status:    status.Status,
+		CheckedAt: &status.CheckedAt,
+	}
+
+	// Render the updated card
+	component := uptime.UptimeWebsiteCard(dashboardWebsite)
+	component.Render(r.Context(), w)
 }

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"the-ark/internal/auth"
 	"the-ark/internal/features/uptime/models"
 	"the-ark/views/uptime"
 
@@ -21,6 +22,9 @@ func NewWebHandler(logger *slog.Logger, server ServerInterface) *WebHandler {
 }
 
 func (h *WebHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
+	// Get user from context
+	user := auth.GetUserFromContext(r)
+
 	websites, err := h.server.GetActiveWebsites()
 	if err != nil {
 		h.logger.Error("Failed to get active websites", "error", err)
@@ -51,7 +55,7 @@ func (h *WebHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Render the dashboard page
-	component := uptime.Dashboard(dashboardWebsites)
+	// Render the dashboard page with user
+	component := uptime.Dashboard(user, dashboardWebsites)
 	component.Render(r.Context(), w)
 }
