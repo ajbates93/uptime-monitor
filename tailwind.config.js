@@ -21,7 +21,42 @@ module.exports = {
           700: '#0369a1',
           800: '#075985',
           900: '#0c4a6e',
-        }
+        },
+        // Semantic colors for components
+        primary: {
+          DEFAULT: '#0ea5e9', // ark-500
+          foreground: '#ffffff',
+        },
+        secondary: {
+          DEFAULT: '#f1f5f9',
+          foreground: '#0f172a',
+        },
+        destructive: {
+          DEFAULT: '#ef4444',
+          foreground: '#ffffff',
+        },
+        muted: {
+          DEFAULT: '#f8fafc',
+          foreground: '#64748b',
+        },
+        accent: {
+          DEFAULT: '#f1f5f9',
+          foreground: '#0f172a',
+        },
+        background: '#ffffff',
+        foreground: '#0f172a',
+        card: {
+          DEFAULT: '#ffffff',
+          foreground: '#0f172a',
+        },
+        popover: {
+          DEFAULT: '#ffffff',
+          foreground: '#0f172a',
+        },
+        border: '#e2e8f0',
+        input: '#e2e8f0',
+        ring: '#0ea5e9',
+      }
       }
     },
   },
