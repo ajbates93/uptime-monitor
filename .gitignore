@@ -41,3 +41,13 @@ main
 api
 bin
 the-ark
+
+# Systemd service files
+*.service
+
+# Local tool configuration
+.tool-versions
+.templui.json
+
+# IDE-specific directories
+.cursor/
