@@ -4,13 +4,17 @@ package themetoggle
 templ ThemeToggleScript() {
 	<script>
 		// Theme toggle functionality
-		document.addEventListener('DOMContentLoaded', function() {
-			console.log('DOM loaded, checking for theme toggle button...');
+		function initializeThemeToggle() {
+			console.log('Initializing theme toggle...');
 			const button = document.getElementById('theme-toggle');
 			console.log('Theme toggle button found:', button);
 			
 			if (button) {
-				button.addEventListener('click', function() {
+				// Remove existing event listeners to prevent duplicates
+				button.replaceWith(button.cloneNode(true));
+				const newButton = document.getElementById('theme-toggle');
+				
+				newButton.addEventListener('click', function() {
 					console.log('Theme toggle clicked!');
 					const html = document.documentElement;
 					const currentTheme = localStorage.getItem('theme') || 'light';
@@ -27,6 +31,17 @@ templ ThemeToggleScript() {
 					console.log('Current html classes:', html.className);
 				});
 			}
-		});
+		}
+
+		// Initialize on DOM content loaded
+		document.addEventListener('DOMContentLoaded', initializeThemeToggle);
+		
+		// Initialize immediately if DOM is already loaded
+		if (document.readyState === 'loading') {
+			// DOM is still loading, wait for DOMContentLoaded
+		} else {
+			// DOM is already loaded, initialize immediately
+			initializeThemeToggle();
+		}
 	</script>
 } 

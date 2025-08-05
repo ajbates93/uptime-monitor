@@ -6,6 +6,7 @@ import (
 	"the-ark/views/components/badge"
 	"the-ark/views/components/button"
 	"the-ark/views/components/card"
+	"the-ark/views/components/navigation"
 	"the-ark/views/components/theme-toggle"
 	"the-ark/views/layouts"
 )
@@ -21,64 +22,10 @@ templ Dashboard(user *auth.User, featureStatus map[string]core.FeatureStatus) {
 		
 		<div class="min-h-screen flex">
 			<!-- Sidebar -->
-			<nav class="w-64 bg-white dark:bg-gray-800 shadow-lg transition-colors duration-200">
-				<div class="p-6">
-					<div class="flex items-center justify-between">
-						<h1 class="text-2xl font-bold text-gray-900 dark:text-white">The Ark</h1>
-						@themetoggle.ThemeToggle(themetoggle.Props{})
-					</div>
-					if !user.IsAnonymous() {
-						<div class="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border-0 dark:border-gray-600">
-							<div class="text-sm font-medium text-gray-900 dark:text-white">{ user.Name }</div>
-							<div class="text-sm text-gray-500 dark:text-gray-300">{ user.Email }</div>
-						</div>
-					}
-				</div>
-				
-				<ul class="px-4 space-y-2">
-					<li>
-						<a href="/" class="flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg">
-							Dashboard
-						</a>
-					</li>
-					<li>
-						<a href="/uptime" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-							Uptime Monitor
-						</a>
-					</li>
-					<li>
-						<a href="/server" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-							Server Monitoring
-						</a>
-					</li>
-					<li>
-						<a href="/ssl" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-							SSL Tracker
-						</a>
-					</li>
-					<li>
-						<a href="/logs" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-							Log Viewer
-						</a>
-					</li>
-				</ul>
-				
-				if !user.IsAnonymous() {
-					<div class="absolute bottom-0 w-64 p-4">
-						@button.Button(button.Props{
-							Variant: button.VariantOutline,
-							Size: button.SizeSm,
-							Class: "w-full border-gray-600 dark:border-gray-600 text-gray-900 dark:text-white",
-							Attributes: templ.Attributes{
-								"hx-post": "/auth/logout",
-								"hx-target": "body",
-							},
-						}) {
-							Logout
-						}
-					</div>
-				}
-			</nav>
+			@navigation.Navigation(navigation.Props{
+				User: user,
+				ActivePage: "dashboard",
+			})
 			
 			<!-- Main Content -->
 			<main class="flex-1 p-8">

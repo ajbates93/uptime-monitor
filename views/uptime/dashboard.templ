@@ -7,6 +7,7 @@ import (
 	"the-ark/views/components/badge"
 	"the-ark/views/components/button"
 	"the-ark/views/components/card"
+	"the-ark/views/components/navigation"
 	"the-ark/views/components/theme-toggle"
 	"the-ark/views/layouts"
 )
@@ -18,64 +19,10 @@ templ Dashboard(user *auth.User, websites []models.DashboardWebsite) {
 	}) {
 		<div class="min-h-screen flex">
 			<!-- Sidebar -->
-			<nav class="w-64 bg-white dark:bg-gray-800 shadow-lg transition-colors duration-200">
-				<div class="p-6">
-					<div class="flex items-center justify-between">
-						<h1 class="text-2xl font-bold text-gray-900 dark:text-white">The Ark</h1>
-						@themetoggle.ThemeToggle(themetoggle.Props{})
-					</div>
-					if !user.IsAnonymous() {
-						<div class="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border-0 dark:border-gray-600">
-							<div class="text-sm font-medium text-gray-900 dark:text-white">{ user.Name }</div>
-							<div class="text-sm text-gray-500 dark:text-gray-300">{ user.Email }</div>
-						</div>
-					}
-				</div>
-				
-				<ul class="px-4 space-y-2">
-					<li>
-						<a href="/" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-							Dashboard
-						</a>
-					</li>
-					<li>
-						<a href="/uptime" class="flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg">
-							Uptime Monitor
-						</a>
-					</li>
-					<li>
-						<a href="/server" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-							Server Monitoring
-						</a>
-					</li>
-					<li>
-						<a href="/ssl" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-							SSL Tracker
-						</a>
-					</li>
-					<li>
-						<a href="/logs" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-							Log Viewer
-						</a>
-					</li>
-				</ul>
-				
-				if !user.IsAnonymous() {
-					<div class="absolute bottom-0 w-64 p-4">
-						@button.Button(button.Props{
-							Variant: button.VariantOutline,
-							Size: button.SizeSm,
-							Class: "w-full border-gray-600 dark:border-gray-600 text-gray-900 dark:text-white",
-							Attributes: templ.Attributes{
-								"hx-post": "/auth/logout",
-								"hx-target": "body",
-							},
-						}) {
-							Logout
-						}
-					</div>
-				}
-			</nav>
+			@navigation.Navigation(navigation.Props{
+				User: user,
+				ActivePage: "uptime",
+			})
 			
 			<!-- Main Content -->
 			<main class="flex-1 p-8">
@@ -83,8 +30,9 @@ templ Dashboard(user *auth.User, websites []models.DashboardWebsite) {
 					<div class="flex items-center justify-between">
 						<h2 class="text-3xl font-bold text-gray-900 dark:text-white">Uptime Monitor</h2>
 						@button.Button(button.Props{
-							Variant: button.VariantDefault,
+							Variant: button.VariantOutline,
 							Size: button.SizeSm,
+							Class: "border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
 							Attributes: templ.Attributes{
 								"hx-get": "/uptime/api/dashboard",
 								"hx-target": ".website-grid",
@@ -98,7 +46,7 @@ templ Dashboard(user *auth.User, websites []models.DashboardWebsite) {
 					</div>
 				</header>
 				
-				<div class="website-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+				<div class="website-grid grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
 					for _, website := range websites {
 						@UptimeWebsiteCard(website)
 					}
@@ -137,20 +85,30 @@ templ UptimeWebsiteCard(website models.DashboardWebsite) {
 			</div>
 		}
 		@card.Footer() {
-			@button.Button(button.Props{
-				Variant: button.VariantOutline,
-				Size: button.SizeSm,
-				Class: "border-gray-600 dark:border-gray-600 text-gray-900 dark:text-white",
-				Attributes: templ.Attributes{
-					"hx-post": "/uptime/api/websites/" + fmt.Sprint(website.Website.ID) + "/check",
-					"hx-target": "closest .website-card",
-					"hx-swap": "outerHTML",
-					"hx-indicator": "#check-indicator-" + fmt.Sprint(website.Website.ID),
-				},
-			}) {
-				<span id={ "check-indicator-" + fmt.Sprint(website.Website.ID) } class="htmx-indicator">🔄</span>
-				Check Now
-			}
+			<div class="flex space-x-2">
+				@button.Button(button.Props{
+					Variant: button.VariantOutline,
+					Size: button.SizeSm,
+					Class: "flex-1 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
+					Attributes: templ.Attributes{
+						"hx-post": "/uptime/api/websites/" + fmt.Sprint(website.Website.ID) + "/check",
+						"hx-target": "closest .website-card",
+						"hx-swap": "outerHTML",
+						"hx-indicator": "#check-indicator-" + fmt.Sprint(website.Website.ID),
+					},
+				}) {
+					<span id={ "check-indicator-" + fmt.Sprint(website.Website.ID) } class="htmx-indicator">🔄</span>
+					Check Now
+				}
+				@button.Button(button.Props{
+					Variant: button.VariantDefault,
+					Size: button.SizeSm,
+					Class: "flex-1 bg-blue-600 hover:bg-blue-700 text-white",
+					Href: "/uptime/website/" + fmt.Sprint(website.Website.ID),
+				}) {
+					View Details
+				}
+			</div>
 		}
 	}
 }

@@ -50,6 +50,7 @@ func (f *Feature) Routes() []core.Route {
 	return []core.Route{
 		// Web routes
 		{Method: "GET", Path: "/uptime", Handler: webHandler.Dashboard},
+		{Method: "GET", Path: "/uptime/website/{id}", Handler: webHandler.WebsiteDetail},
 
 		// API routes
 		{Method: "GET", Path: "/uptime/api/websites", Handler: apiHandler.ListWebsites},

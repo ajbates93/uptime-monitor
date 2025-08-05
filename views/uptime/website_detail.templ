@@ -1,0 +1,332 @@
+package uptime
+
+import (
+	"fmt"
+	"the-ark/internal/auth"
+	"the-ark/internal/features/uptime/models"
+	"the-ark/views/components/badge"
+	"the-ark/views/components/button"
+	"the-ark/views/components/card"
+	"the-ark/views/components/navigation"
+	"the-ark/views/components/theme-toggle"
+	"the-ark/views/layouts"
+	"time"
+)
+
+templ WebsiteDetail(user *auth.User, data models.WebsiteDetailData) {
+	@layouts.BaseLayout(layouts.BaseLayoutProps{
+		Title: "The Ark - " + data.Website.Name,
+		Description: "Website uptime monitoring details",
+	}) {
+		<div class="min-h-screen flex">
+			<!-- Sidebar -->
+			@navigation.Navigation(navigation.Props{
+				User: user,
+				ActivePage: "uptime",
+			})
+			
+			<!-- Main Content -->
+			<main class="flex-1 p-8">
+				<!-- Header -->
+				<header class="mb-8">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center space-x-4">
+							<a href="/uptime" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-2xl font-bold">
+								←
+							</a>
+							<div>
+								<h2 class="text-3xl font-bold text-gray-900 dark:text-white">{ data.Website.Name }</h2>
+								<p class="text-gray-500 dark:text-gray-400">HTTP/S monitor for { data.Website.URL }</p>
+							</div>
+						</div>
+						<div class="flex items-center space-x-2">
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size: button.SizeSm,
+								Class: "border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
+								Attributes: templ.Attributes{
+									"hx-post": "/uptime/api/websites/" + fmt.Sprint(data.Website.ID) + "/check",
+									"hx-target": "#status-section",
+									"hx-swap": "innerHTML",
+								},
+							}) {
+								Test notification
+							}
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size: button.SizeSm,
+								Class: "border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
+							}) {
+								Pause
+							}
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size: button.SizeSm,
+								Class: "border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
+							}) {
+								Edit
+							}
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size: button.SizeSm,
+								Class: "border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
+							}) {
+								⋮
+							}
+						</div>
+					</div>
+				</header>
+
+				<!-- Status Cards -->
+				<div id="status-section" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+					@StatusCard("Current status", getCurrentStatusText(data.LastStatus), getCurrentStatusColor(data.LastStatus), getCurrentStatusSubtext(data.LastStatus))
+					@StatusCard("Last check", getLastCheckText(data.LastStatus), "text-gray-900 dark:text-white", getLastCheckSubtext(data.Website))
+					@UptimeCard("Last 24 hours", data.UptimeStats, 24)
+					@StatusCard("Domain & SSL cert.", "Domain valid until 12/03/2026", "text-gray-900 dark:text-white", "SSL certificate valid until 12/03/2026")
+				</div>
+
+				<!-- Uptime Stats -->
+				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+					@card.Card(card.Props{
+						Class: "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
+					}) {
+						@card.Header() {
+							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Uptime Stats</h3>
+						}
+						@card.Content() {
+							<div class="space-y-4">
+								for _, stat := range data.UptimeStats {
+									@UptimeStatRow(stat)
+								}
+							</div>
+						}
+					}
+
+					@card.Card(card.Props{
+						Class: "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
+					}) {
+						@card.Header() {
+							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Response Time</h3>
+						}
+						@card.Content() {
+							<div class="space-y-4">
+								<div class="text-center">
+									<div class="text-3xl font-bold text-gray-900 dark:text-white">{ fmt.Sprintf("%.2f", data.AvgResponse) } ms</div>
+									<div class="text-sm text-gray-500 dark:text-gray-400">Average (Last 30 days)</div>
+								</div>
+								<div class="bg-gray-100 dark:bg-gray-700 h-32 rounded-lg flex items-end justify-center p-4">
+									<div class="text-xs text-gray-500 dark:text-gray-400">Response time graph coming soon</div>
+								</div>
+							</div>
+						}
+					}
+				</div>
+
+				<!-- Latest Incidents -->
+				@card.Card(card.Props{
+					Class: "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
+				}) {
+					@card.Header() {
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Latest Incidents</h3>
+					}
+					@card.Content() {
+						if len(data.Incidents) == 0 {
+							<div class="text-center py-8 text-gray-500 dark:text-gray-400">
+								No incidents recorded
+							</div>
+						} else {
+							<div class="overflow-x-auto">
+								<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+									<thead class="bg-gray-50 dark:bg-gray-800">
+										<tr>
+											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Root cause</th>
+											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Comments</th>
+											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Started</th>
+											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration</th>
+										</tr>
+									</thead>
+									<tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+										for _, incident := range data.Incidents {
+											@IncidentRow(incident)
+										}
+									</tbody>
+								</table>
+							</div>
+						}
+					}
+				}
+			</main>
+		</div>
+		
+		<!-- Theme toggle script -->
+		@themetoggle.ThemeToggleScript()
+	}
+}
+
+templ StatusCard(title, value, valueClass, subtext string) {
+	@card.Card(card.Props{
+		Class: "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
+	}) {
+		@card.Content() {
+			<div class="text-center">
+				<h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">{ title }</h4>
+				<div class={ "text-2xl font-bold mb-1 " + valueClass }>{ value }</div>
+				<div class="text-sm text-gray-500 dark:text-gray-400">{ subtext }</div>
+			</div>
+		}
+	}
+}
+
+templ UptimeCard(title string, stats []models.UptimeStats, hours int) {
+	@card.Card(card.Props{
+		Class: "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
+	}) {
+		@card.Content() {
+			<div class="text-center">
+				<h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">{ title }</h4>
+				for _, stat := range stats {
+					if stat.Period == fmt.Sprintf("%dh", hours) {
+						<div class="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">{ fmt.Sprintf("%.2f", stat.Percentage) }%</div>
+						<div class="flex justify-center mb-2">
+							@UptimeBars(stat.Percentage, hours)
+						</div>
+						<div class="text-sm text-gray-500 dark:text-gray-400">{ fmt.Sprintf("%d incidents, %s down", stat.IncidentCount, stat.Downtime) }</div>
+						break
+					}
+				}
+			</div>
+		}
+	}
+}
+
+templ UptimeBars(percentage float64, hours int) {
+	<div class="flex space-x-1">
+		for i := 0; i < hours; i++ {
+			if float64(i) < (percentage / 100.0 * float64(hours)) {
+				<div class="w-1 h-8 rounded bg-green-500"></div>
+			} else {
+				<div class="w-1 h-8 rounded bg-gray-300 dark:bg-gray-600"></div>
+			}
+		}
+	</div>
+}
+
+templ UptimeStatRow(stat models.UptimeStats) {
+	<div class="flex items-center justify-between">
+		<div>
+			<div class="text-sm font-medium text-gray-900 dark:text-white">{ stat.Period }</div>
+			<div class="text-sm text-gray-500 dark:text-gray-400">{ fmt.Sprintf("%d incidents, %s down", stat.IncidentCount, stat.Downtime) }</div>
+		</div>
+		<div class="text-right">
+			<div class={ "text-lg font-bold " + getUptimeColor(stat.Percentage) }>{ fmt.Sprintf("%.3f", stat.Percentage) }%</div>
+		</div>
+	</div>
+}
+
+templ IncidentRow(incident models.Incident) {
+	<tr>
+		<td class="px-6 py-4 whitespace-nowrap">
+			@IncidentStatusBadge(incident)
+		</td>
+		<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+			{ getIncidentRootCause(incident) }
+		</td>
+		<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+			{ incident.Comments }
+		</td>
+		<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+			{ incident.StartedAt.Format("Jan 02, 2006, 15:04:05") }
+		</td>
+		<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+			{ formatDuration(incident.Duration) }
+		</td>
+	</tr>
+}
+
+templ IncidentStatusBadge(incident models.Incident) {
+	if incident.ResolvedAt == nil {
+		@badge.Badge(badge.Props{
+			Variant: badge.VariantDestructive,
+			Class: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+		}) {
+			Ongoing
+		}
+	} else {
+		@badge.Badge(badge.Props{
+			Variant: badge.VariantDefault,
+			Class: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+		}) {
+			Resolved
+		}
+	}
+}
+
+// Helper functions
+func getCurrentStatusText(status *models.WebsiteStatus) string {
+	if status == nil {
+		return "Unknown"
+	}
+	if status.Status == "up" {
+		return "Up"
+	}
+	return "Down"
+}
+
+func getCurrentStatusColor(status *models.WebsiteStatus) string {
+	if status == nil {
+		return "text-gray-900 dark:text-white"
+	}
+	if status.Status == "up" {
+		return "text-green-600 dark:text-green-400"
+	}
+	return "text-red-600 dark:text-red-400"
+}
+
+func getCurrentStatusSubtext(status *models.WebsiteStatus) string {
+	if status == nil {
+		return "No checks performed"
+	}
+	if status.Status == "up" {
+		return "Currently up for 5 d, 14 h, 5 m"
+	}
+	return "Currently down"
+}
+
+func getLastCheckText(status *models.WebsiteStatus) string {
+	if status == nil {
+		return "Never"
+	}
+	return time.Since(status.CheckedAt).Round(time.Second).String() + " ago"
+}
+
+func getLastCheckSubtext(website models.Website) string {
+	return fmt.Sprintf("Checked every %d m", website.CheckInterval/60)
+}
+
+func getUptimeColor(percentage float64) string {
+	if percentage >= 99.9 {
+		return "text-green-600 dark:text-green-400"
+	} else if percentage >= 99.0 {
+		return "text-yellow-600 dark:text-yellow-400"
+	}
+	return "text-red-600 dark:text-red-400"
+}
+
+func getIncidentRootCause(incident models.Incident) string {
+	if incident.RootCause != "" {
+		return incident.RootCause
+	}
+	return "Unknown"
+}
+
+func formatDuration(d time.Duration) string {
+	if d < time.Minute {
+		return fmt.Sprintf("%.0fs", d.Seconds())
+	} else if d < time.Hour {
+		return fmt.Sprintf("%.0fm", d.Minutes())
+	} else if d < 24*time.Hour {
+		return fmt.Sprintf("%.0fh", d.Hours())
+	}
+	return fmt.Sprintf("%.0fd", d.Hours()/24)
+} 
