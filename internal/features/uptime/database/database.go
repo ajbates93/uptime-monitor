@@ -437,6 +437,36 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%.0fd", d.Hours()/24)
 }
 
+// CreateWebsite adds a new website to monitor
+func (s *DatabaseService) CreateWebsite(website models.Website) error {
+	query := `
+		INSERT INTO uptime_websites (name, url, check_interval, created_at)
+		VALUES (?, ?, ?, ?)
+	`
+
+	_, err := s.db.Exec(query, website.Name, website.URL, website.CheckInterval, time.Now())
+	return err
+}
+
+// DeleteWebsite removes a website from monitoring
+func (s *DatabaseService) DeleteWebsite(websiteID int) error {
+	// Delete related records first (due to foreign key constraints)
+	queries := []string{
+		"DELETE FROM alert_history WHERE website_id = ?",
+		"DELETE FROM uptime_checks WHERE website_id = ?",
+		"DELETE FROM uptime_websites WHERE id = ?",
+	}
+
+	for _, query := range queries {
+		_, err := s.db.Exec(query, websiteID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // parseTimeFlexible tries to parse a datetime string using multiple common formats
 func parseTimeFlexible(timeStr string) (time.Time, error) {
 	formats := []string{

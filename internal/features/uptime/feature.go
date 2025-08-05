@@ -51,10 +51,13 @@ func (f *Feature) Routes() []core.Route {
 		// Web routes
 		{Method: "GET", Path: "/uptime", Handler: webHandler.Dashboard},
 		{Method: "GET", Path: "/uptime/website/{id}", Handler: webHandler.WebsiteDetail},
+		{Method: "GET", Path: "/uptime/add", Handler: webHandler.AddSiteModal},
 
 		// API routes
 		{Method: "GET", Path: "/uptime/api/websites", Handler: apiHandler.ListWebsites},
+		{Method: "POST", Path: "/uptime/api/websites", Handler: apiHandler.CreateWebsite},
 		{Method: "GET", Path: "/uptime/api/websites/{id}", Handler: apiHandler.GetWebsite},
+		{Method: "DELETE", Path: "/uptime/api/websites/{id}", Handler: apiHandler.DeleteWebsite},
 		{Method: "POST", Path: "/uptime/api/websites/{id}/check", Handler: apiHandler.CheckWebsite},
 		{Method: "GET", Path: "/uptime/api/dashboard", Handler: apiHandler.GetDashboard},
 	}

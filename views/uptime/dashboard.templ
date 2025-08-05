@@ -28,21 +28,45 @@ templ Dashboard(user *auth.User, websites []models.DashboardWebsite) {
 			<main class="flex-1 p-8">
 				<header class="mb-8">
 					<div class="flex items-center justify-between">
-						<h2 class="text-3xl font-bold text-gray-900 dark:text-white">Uptime Monitor</h2>
-						@button.Button(button.Props{
-							Variant: button.VariantOutline,
-							Size: button.SizeSm,
-							Class: "border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
-							Attributes: templ.Attributes{
-								"hx-get": "/uptime/api/dashboard",
-								"hx-target": ".website-grid",
-								"hx-swap": "innerHTML",
-								"hx-indicator": "#refresh-indicator",
-							},
-						}) {
-							<span id="refresh-indicator" class="htmx-indicator">🔄</span>
-							Refresh Dashboard
-						}
+						<div>
+							<h2 class="text-3xl font-bold text-gray-900 dark:text-white">Uptime Monitor</h2>
+							<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{ len(websites) }/8 sites being monitored</p>
+						</div>
+						<div class="flex items-center space-x-3">
+							<!-- Debug info -->
+							<span class="text-xs text-gray-500">Debug: { len(websites) } websites</span>
+							
+							if len(websites) < 8 {
+								@button.Button(button.Props{
+									Variant: button.VariantDefault,
+									Size: button.SizeSm,
+									Class: "bg-blue-600 hover:bg-blue-700 text-white",
+									Attributes: templ.Attributes{
+										"hx-get": "/uptime/add",
+										"hx-target": "#add-site-modal",
+										"hx-swap": "innerHTML",
+									},
+								}) {
+									+ Add Site
+								}
+							} else {
+								<span class="text-sm text-gray-500">Max sites reached</span>
+							}
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size: button.SizeSm,
+								Class: "border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
+								Attributes: templ.Attributes{
+									"hx-get": "/uptime/api/dashboard",
+									"hx-target": ".website-grid",
+									"hx-swap": "innerHTML",
+									"hx-indicator": "#refresh-indicator",
+								},
+							}) {
+								<span id="refresh-indicator" class="htmx-indicator">🔄</span>
+								Refresh Dashboard
+							}
+						</div>
 					</div>
 				</header>
 				
@@ -51,6 +75,9 @@ templ Dashboard(user *auth.User, websites []models.DashboardWebsite) {
 						@UptimeWebsiteCard(website)
 					}
 				</div>
+
+				<!-- Add Site Modal Container -->
+				<div id="add-site-modal"></div>
 			</main>
 		</div>
 		
@@ -62,7 +89,7 @@ templ Dashboard(user *auth.User, websites []models.DashboardWebsite) {
 // UptimeWebsiteCard component for individual website updates
 templ UptimeWebsiteCard(website models.DashboardWebsite) {
 	@card.Card(card.Props{
-		Class: "bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow border-gray-200 dark:border-gray-700",
+		Class: "website-card bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow border-gray-200 dark:border-gray-700",
 	}) {
 		@card.Header() {
 			<div class="flex items-center justify-between">
@@ -107,6 +134,20 @@ templ UptimeWebsiteCard(website models.DashboardWebsite) {
 					Href: "/uptime/website/" + fmt.Sprint(website.Website.ID),
 				}) {
 					View Details
+				}
+				@button.Button(button.Props{
+					Variant: button.VariantDestructive,
+					Size: button.SizeSm,
+					Class: "px-3 bg-red-600 hover:bg-red-700 text-white",
+					Attributes: templ.Attributes{
+						"hx-delete": "/uptime/api/websites/" + fmt.Sprint(website.Website.ID),
+						"hx-target": "closest .website-card",
+						"hx-swap": "none",
+						"hx-confirm": "Are you sure you want to delete " + website.Website.Name + "?",
+						"hx-on::after-request": "if(event.detail.xhr.status === 200) { try { const response = JSON.parse(event.detail.xhr.responseText); if(response.success) { event.target.closest('.website-card').remove(); } } catch(e) { console.error('Failed to parse response:', e); } }",
+					},
+				}) {
+					🗑️
 				}
 			</div>
 		}

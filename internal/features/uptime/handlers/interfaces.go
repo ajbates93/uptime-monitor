@@ -8,4 +8,6 @@ type ServerInterface interface {
 	GetLastWebsiteStatus(websiteID int) (*models.WebsiteStatus, error)
 	CheckWebsite(website models.Website) error
 	GetWebsiteDetailData(websiteID int) (*models.WebsiteDetailData, error)
+	CreateWebsite(website models.Website) error
+	DeleteWebsite(websiteID int) error
 }

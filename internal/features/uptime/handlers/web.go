@@ -28,6 +28,13 @@ func (h *WebHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	// Get user from context
 	user := auth.GetUserFromContext(r)
 
+	// Add defensive check for nil user
+	if user == nil {
+		h.logger.Error("User is nil in Dashboard handler")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	websites, err := h.server.GetActiveWebsites()
 	if err != nil {
 		h.logger.Error("Failed to get active websites", "error", err)
@@ -43,6 +50,16 @@ func (h *WebHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			h.logger.Error("Failed to get website status", "website_id", website.ID, "error", err)
 			// Continue with unknown status
+			dashboardWebsites[i] = models.DashboardWebsite{
+				Website:   website,
+				Status:    "unknown",
+				CheckedAt: nil,
+			}
+			continue
+		}
+
+		// Add defensive check for nil status
+		if status == nil {
 			dashboardWebsites[i] = models.DashboardWebsite{
 				Website:   website,
 				Status:    "unknown",
@@ -85,5 +102,11 @@ func (h *WebHandler) WebsiteDetail(w http.ResponseWriter, r *http.Request) {
 
 	// Render the website detail page
 	component := uptime.WebsiteDetail(user, *detailData)
+	component.Render(r.Context(), w)
+}
+
+func (h *WebHandler) AddSiteModal(w http.ResponseWriter, r *http.Request) {
+	h.logger.Info("AddSiteModal handler called")
+	component := uptime.AddSiteModal()
 	component.Render(r.Context(), w)
 }

@@ -5,7 +5,6 @@ import (
 	"the-ark/internal/auth"
 	"the-ark/internal/features/uptime/models"
 	"the-ark/views/components/badge"
-	"the-ark/views/components/button"
 	"the-ark/views/components/card"
 	"the-ark/views/components/navigation"
 	"the-ark/views/components/theme-toggle"
@@ -39,41 +38,7 @@ templ WebsiteDetail(user *auth.User, data models.WebsiteDetailData) {
 								<p class="text-gray-500 dark:text-gray-400">HTTP/S monitor for { data.Website.URL }</p>
 							</div>
 						</div>
-						<div class="flex items-center space-x-2">
-							@button.Button(button.Props{
-								Variant: button.VariantOutline,
-								Size: button.SizeSm,
-								Class: "border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
-								Attributes: templ.Attributes{
-									"hx-post": "/uptime/api/websites/" + fmt.Sprint(data.Website.ID) + "/check",
-									"hx-target": "#status-section",
-									"hx-swap": "innerHTML",
-								},
-							}) {
-								Test notification
-							}
-							@button.Button(button.Props{
-								Variant: button.VariantOutline,
-								Size: button.SizeSm,
-								Class: "border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
-							}) {
-								Pause
-							}
-							@button.Button(button.Props{
-								Variant: button.VariantOutline,
-								Size: button.SizeSm,
-								Class: "border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
-							}) {
-								Edit
-							}
-							@button.Button(button.Props{
-								Variant: button.VariantOutline,
-								Size: button.SizeSm,
-								Class: "border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
-							}) {
-								⋮
-							}
-						</div>
+
 					</div>
 				</header>
 

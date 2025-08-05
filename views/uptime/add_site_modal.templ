@@ -1,0 +1,151 @@
+package uptime
+
+import (
+	"the-ark/views/components/button"
+	"the-ark/views/components/card"
+)
+
+templ AddSiteModal() {
+	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+		@card.Card(card.Props{
+			Class: "w-full max-w-md mx-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
+		}) {
+			@card.Header() {
+				<div class="flex items-center justify-between">
+					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Add New Site</h3>
+					<button
+						class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+						onclick="document.getElementById('add-site-modal').innerHTML = ''"
+					>
+						✕
+					</button>
+				</div>
+			}
+			@card.Content() {
+				<!-- Debug info -->
+				<div class="text-xs text-gray-500 mb-4">Modal loaded successfully</div>
+				
+				<form
+					id="add-site-form"
+					class="space-y-4"
+					onsubmit="console.log('Form onsubmit fired'); return false;"
+				>
+					<!-- HTMX indicator -->
+					<div id="form-indicator" class="htmx-indicator text-blue-600">Submitting...</div>
+					
+					<div>
+						<label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							Site Name
+						</label>
+						<input
+							type="text"
+							id="name"
+							name="name"
+							required
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+							placeholder="e.g., My Website"
+						/>
+					</div>
+					
+					<div>
+						<label for="url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							URL
+						</label>
+						<input
+							type="url"
+							id="url"
+							name="url"
+							required
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+							placeholder="https://example.com"
+						/>
+					</div>
+					
+					<div>
+						<label for="check_interval" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							Check Interval (minutes)
+						</label>
+						<select
+							id="check_interval"
+							name="check_interval"
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+						>
+							<option value="60">1 minute</option>
+							<option value="300" selected>5 minutes</option>
+							<option value="900">15 minutes</option>
+							<option value="1800">30 minutes</option>
+							<option value="3600">1 hour</option>
+						</select>
+					</div>
+					
+					<div class="flex space-x-3 pt-4">
+						@button.Button(button.Props{
+							Variant: button.VariantOutline,
+							Size: button.SizeSm,
+							Class: "flex-1 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
+							Attributes: templ.Attributes{
+								"type": "button",
+								"onclick": "document.getElementById('add-site-modal').innerHTML = ''",
+							},
+						}) {
+							Cancel
+						}
+						@button.Button(button.Props{
+							Variant: button.VariantDefault,
+							Size: button.SizeSm,
+							Class: "flex-1 bg-blue-600 hover:bg-blue-700 text-white",
+							Attributes: templ.Attributes{
+								"type": "button",
+								"hx-post": "/uptime/api/websites",
+								"hx-target": "#add-site-modal",
+								"hx-swap": "none",
+								"hx-indicator": "#form-indicator",
+								"hx-include": "#add-site-form",
+								"hx-on::after-request": "if(event.detail.xhr.status === 200) { try { const response = JSON.parse(event.detail.xhr.responseText); if(response.success) { window.location.href = '/uptime'; } } catch(e) { console.error('Failed to parse response:', e); } }",
+								"onclick": "console.log('Submit button clicked');",
+							},
+						}) {
+							Add Site
+						}
+					</div>
+				</form>
+			}
+		}
+	</div>
+	
+	<script>
+		// Debug HTMX
+		console.log('Modal loaded, checking HTMX...');
+		if (typeof htmx !== 'undefined') {
+			console.log('HTMX is loaded');
+			
+			// Add event listener to form
+			const form = document.querySelector('form');
+			console.log('Form found:', form);
+			
+			form.addEventListener('submit', function(e) {
+				console.log('Form submit event fired');
+				console.log('Form action:', form.action);
+				console.log('Form method:', form.method);
+				console.log('Form has hx-post:', form.hasAttribute('hx-post'));
+			});
+			
+			// Listen for HTMX events
+			document.body.addEventListener('htmx:beforeRequest', function(e) {
+				console.log('HTMX beforeRequest:', e.detail);
+				console.log('Request URL:', e.detail.requestConfig.path);
+			});
+			
+			document.body.addEventListener('htmx:afterRequest', function(e) {
+				console.log('HTMX afterRequest:', e.detail);
+				console.log('Response status:', e.detail.xhr.status);
+			});
+			
+			document.body.addEventListener('htmx:sendError', function(e) {
+				console.log('HTMX sendError:', e.detail);
+			});
+		} else {
+			console.log('HTMX is NOT loaded');
+		}
+	</script>
+} 
