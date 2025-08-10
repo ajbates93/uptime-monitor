@@ -2,7 +2,7 @@
 
 # Build the application
 build:
-	go build -o bin/the-ark ./cmd/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o bin/the-ark ./cmd/main.go
 
 # Run the application
 run:

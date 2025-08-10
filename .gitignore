@@ -36,7 +36,9 @@ temp/
 # Documentation
 docs/
 
+deploy/
 deploy.sh
+deployment.env
 main
 api
 bin

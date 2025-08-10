@@ -14,7 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 
 	"the-ark/internal/auth"
 	"the-ark/internal/core"
@@ -41,7 +41,7 @@ func New(logger *slog.Logger) *Server {
 
 	// Initialize database
 	dbPath := config.Database.Path
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		logger.Error("Failed to open database", "error", err)
 		os.Exit(1)

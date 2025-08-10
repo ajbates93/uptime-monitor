@@ -6,10 +6,10 @@ After=network.target
 Type=simple
 User=nobody
 Group=nogroup
-ExecStart=/usr/local/bin/the-ark
+ExecStart=/opt/the-ark/the-ark
 Restart=always
 RestartSec=5
-Environment=DB_PATH=/var/lib/the-ark/ark.db
+Environment=ARK_DB_PATH=/var/lib/the-ark/ark.db
 WorkingDirectory=/var/lib/the-ark
 
 [Install]
