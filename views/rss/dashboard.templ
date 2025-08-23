@@ -1,42 +1,54 @@
 package rss
 
-templ RSSDashboard() {
-	<!DOCTYPE html>
-	<html lang="en">
-		<head>
-			<meta charset="UTF-8">
-			<meta name="viewport" content="width=device-width, initial-scale=1.0">
-			<title>RSS Dashboard - The Ark</title>
-			<link rel="stylesheet" href="/assets/css/dashboard.css">
-		</head>
-		<body class="bg-gray-50 dark:bg-gray-900">
-			<div class="min-h-screen">
-				<!-- Header -->
-				<header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-					<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-						<div class="flex justify-between items-center py-6">
-							<div class="flex items-center">
-								<h1 class="text-2xl font-bold text-gray-900 dark:text-white">RSS Dashboard</h1>
-							</div>
-							<div class="flex items-center space-x-4">
-								<button
-									type="button"
-									class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-									onclick="openAddFeedModal()"
-								>
-									<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-									</svg>
-									Add Feed
-								</button>
-							</div>
-						</div>
-					</div>
-				</header>
+import (
+    "the-ark/internal/auth"
+    "the-ark/views/components/navigation"
+    "the-ark/views/components/button"
+    "the-ark/views/layouts"
+)
 
-				<!-- Main Content -->
-				<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-					<div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+templ RSSDashboard() {
+    @layouts.BaseLayout(layouts.BaseLayoutProps{
+        Title: "The Ark - RSS Reader",
+        Description: "Personal RSS feed reader",
+    }) {
+        <div class="min-h-screen flex">
+            <!-- Sidebar -->
+            @navigation.Navigation(navigation.Props{
+                User: auth.AnonymousUser,
+                ActivePage: "rss",
+            })
+
+            <!-- Main Content -->
+            <main class="flex-1 p-8">
+                <header class="mb-8">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-3xl font-bold text-gray-900 dark:text-white">RSS Reader</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your feeds and read articles</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            @button.Button(button.Props{
+                                Variant: button.VariantDefault,
+                                Size: button.SizeSm,
+                                Class: "bg-blue-600 hover:bg-blue-700 text-white",
+                                Attributes: templ.Attributes{
+                                    "onclick": "openAddFeedModal()",
+                                },
+                            }) { + Add Feed }
+                            @button.Button(button.Props{
+                                Variant: button.VariantOutline,
+                                Size: button.SizeSm,
+                                Class: "border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700",
+                                Attributes: templ.Attributes{
+                                    "onclick": "refreshFeeds()",
+                                },
+                            }) { Refresh All }
+                        </div>
+                    </div>
+                </header>
+				<!-- Header -->
+				<div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
 						<!-- Sidebar - Feed List -->
 						<div class="lg:col-span-1">
 							<div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
@@ -65,12 +77,13 @@ templ RSSDashboard() {
 											<button
 												type="button"
 												id="refresh-btn"
-												class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  								class="inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
 												onclick="refreshFeeds()"
 											>
-												<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
 												</svg>
+                                        <span>Refresh all</span>
 											</button>
 										</div>
 									</div>
@@ -154,9 +167,9 @@ templ RSSDashboard() {
 						</form>
 					</div>
 				</div>
-			</div>
+				</div>
 
-			<script>
+				<script>
 				// Modal functions
 				function openAddFeedModal() {
 					document.getElementById('add-feed-modal').classList.remove('hidden');
@@ -337,7 +350,6 @@ templ RSSDashboard() {
 						console.error('Error refreshing feeds:', error);
 					}
 				}
-			</script>
-		</body>
-	</html>
+				</script>
+    }
 } 

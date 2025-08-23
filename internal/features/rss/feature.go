@@ -45,8 +45,8 @@ func NewFeature(logger *core.Logger, db *core.Database, config *Config) *Feature
 	schedulerConfig.UpdateInterval = time.Duration(config.FetchInterval) * time.Second
 	schedulerService := services.NewSchedulerService(feedService, articleService, fetcherService, logger, schedulerConfig)
 
-	// Create handlers
-	handlers := handlers.NewHandlers(logger, feedService, articleService)
+    // Create handlers
+    handlers := handlers.NewHandlers(logger, feedService, articleService, schedulerService)
 
 	feature := &Feature{
 		BaseFeature:      core.NewBaseFeature("rss", "RSS Feed Reader", config.Enabled, logger, db, config),
@@ -99,7 +99,8 @@ func (f *Feature) Routes() []core.Route {
 		{Method: "GET", Path: "/rss/feeds/{id}", Handler: f.handlers.GetFeed},
 		{Method: "PUT", Path: "/rss/feeds/{id}", Handler: f.handlers.UpdateFeed},
 		{Method: "DELETE", Path: "/rss/feeds/{id}", Handler: f.handlers.DeleteFeed},
-		{Method: "POST", Path: "/rss/feeds/{id}/refresh", Handler: f.handlers.RefreshFeed},
+        {Method: "POST", Path: "/rss/feeds/{id}/refresh", Handler: f.handlers.RefreshFeed},
+        {Method: "POST", Path: "/rss/feeds/refresh", Handler: f.handlers.RefreshAllFeeds},
 
 		// Article management
 		{Method: "GET", Path: "/rss/articles", Handler: f.handlers.ListArticles},
@@ -119,7 +120,7 @@ func (f *Feature) Routes() []core.Route {
 		{Method: "GET", Path: "/rss/dashboard", Handler: f.handlers.GetDashboard},
 
 		// Web interface routes
-		{Method: "GET", Path: "/rss", Handler: f.handlers.RSSDashboard},
+        {Method: "GET", Path: "/rss", Handler: f.handlers.RSSDashboard},
 		{Method: "GET", Path: "/rss/feeds/add", Handler: f.handlers.AddFeedPage},
 		{Method: "GET", Path: "/rss/articles/{id}", Handler: f.handlers.ViewArticlePage},
 	}

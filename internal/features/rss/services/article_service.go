@@ -224,15 +224,28 @@ func (s *ArticleService) ListArticles(ctx context.Context, params *models.Articl
 		query += " WHERE " + strings.Join(whereClauses, " AND ")
 	}
 
-	// Add ORDER BY
-	if params.SortBy == "" {
-		params.SortBy = "published_at"
-	}
-	if params.SortOrder == "" {
-		params.SortOrder = "desc"
-	}
+    // Add ORDER BY with stable fallback and tie-breaker
+    if params.SortBy == "" {
+        params.SortBy = "published_at"
+    }
+    if params.SortOrder == "" {
+        params.SortOrder = "desc"
+    }
 
-	query += " ORDER BY " + params.SortBy + " " + params.SortOrder
+    // Map sort fields to SQL expressions to keep stability
+    sortExpr := params.SortBy
+    if params.SortBy == "published_at" {
+        // Use fetched_at when published_at is NULL, then break ties by id
+        sortExpr = "COALESCE(a.published_at, a.fetched_at)"
+    } else if params.SortBy == "fetched_at" {
+        sortExpr = "a.fetched_at"
+    } else if params.SortBy == "title" {
+        sortExpr = "a.title"
+    } else if params.SortBy == "feed_title" {
+        sortExpr = "f.title"
+    }
+
+    query += " ORDER BY " + sortExpr + " " + params.SortOrder + ", a.id DESC"
 
 	// Add LIMIT and OFFSET
 	query += " LIMIT ? OFFSET ?"
@@ -321,6 +334,20 @@ func (s *ArticleService) ToggleStar(ctx context.Context, id int) error {
 
 	s.logger.Info("Toggled article star", "id", id)
 	return nil
+}
+
+// ExistsByFeedAndGUID returns true if an article with the given feed ID and GUID exists
+func (s *ArticleService) ExistsByFeedAndGUID(ctx context.Context, feedID int, guid string) (bool, error) {
+    query := `SELECT 1 FROM rss_articles WHERE feed_id = ? AND guid = ? LIMIT 1`
+    row := s.db.QueryRowWithTimeout(ctx, query, feedID, guid)
+    var exists int
+    if err := row.Scan(&exists); err != nil {
+        if err == sql.ErrNoRows {
+            return false, nil
+        }
+        return false, fmt.Errorf("failed to check article existence: %w", err)
+    }
+    return true, nil
 }
 
 // getArticleTags retrieves tags for a specific article

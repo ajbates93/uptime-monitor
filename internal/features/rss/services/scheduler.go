@@ -20,14 +20,6 @@ type SchedulerService struct {
 	wg             sync.WaitGroup
 }
 
-// SchedulerConfig holds configuration for the scheduler
-type SchedulerConfig struct {
-	UpdateInterval time.Duration
-	MaxWorkers     int
-	RetryAttempts  int
-	RetryDelay     time.Duration
-}
-
 // NewSchedulerService creates a new scheduler service
 func NewSchedulerService(
 	feedService *FeedService,
@@ -93,7 +85,7 @@ func (s *SchedulerService) updateLoop(ctx context.Context) {
 func (s *SchedulerService) updateAllFeeds(ctx context.Context) {
 	s.logger.Info("Starting feed update cycle")
 
-	// Get all enabled feeds
+    // Get all enabled feeds
 	feeds, err := s.feedService.ListFeeds(ctx, true)
 	if err != nil {
 		s.logger.Error("Failed to get feeds for update", "error", err)
@@ -112,7 +104,7 @@ func (s *SchedulerService) updateAllFeeds(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	// Start workers
-	for i := 0; i < s.config.MaxWorkers; i++ {
+    for i := 0; i < s.config.MaxWorkers; i++ {
 		wg.Add(1)
 		go s.feedWorker(ctx, feedChan, &wg)
 	}
@@ -153,7 +145,7 @@ func (s *SchedulerService) updateFeed(ctx context.Context, feed *models.Feed) er
 		}
 	}
 
-	// Fetch the feed
+    // Fetch the feed
 	parsedFeed, err := s.fetcherService.FetchFeed(ctx, feed.URL)
 	if err != nil {
 		return fmt.Errorf("failed to fetch feed: %w", err)
@@ -179,9 +171,9 @@ func (s *SchedulerService) updateFeed(ctx context.Context, feed *models.Feed) er
 
 	// Process articles
 	articlesAdded := 0
-	for _, parsedArticle := range parsedFeed.Articles {
+    for _, parsedArticle := range parsedFeed.Articles {
 		// Check if article already exists
-		exists, err := s.articleExists(ctx, feed.ID, parsedArticle.GUID)
+        exists, err := s.articleService.ExistsByFeedAndGUID(ctx, feed.ID, parsedArticle.GUID)
 		if err != nil {
 			s.logger.Error("Failed to check if article exists", "feed_id", feed.ID, "guid", parsedArticle.GUID, "error", err)
 			continue
@@ -226,26 +218,18 @@ func (s *SchedulerService) updateFeed(ctx context.Context, feed *models.Feed) er
 	return nil
 }
 
-// articleExists checks if an article already exists
-func (s *SchedulerService) articleExists(ctx context.Context, feedID int, guid string) (bool, error) {
-	// Check if article exists by GUID
-	params := &models.ArticleListParams{
-		FeedID: &feedID,
-		Limit:  1,
-		Offset: 0,
-	}
-
-	articles, err := s.articleService.ListArticles(ctx, params)
-	if err != nil {
-		return false, err
-	}
-
-	// Check if any article has this GUID
-	for _, article := range articles {
-		if article.GUID == guid {
-			return true, nil
-		}
-	}
-
-	return false, nil
+// RefreshFeedByID fetches and processes a single feed by ID immediately
+func (s *SchedulerService) RefreshFeedByID(ctx context.Context, feedID int) error {
+    feed, err := s.feedService.GetFeed(ctx, feedID)
+    if err != nil {
+        return fmt.Errorf("failed to get feed %d: %w", feedID, err)
+    }
+    return s.updateFeed(ctx, feed)
 }
+
+// RefreshAll triggers an immediate update cycle for all enabled feeds
+func (s *SchedulerService) RefreshAll(ctx context.Context) {
+    s.updateAllFeeds(ctx)
+}
+
+// Removed local articleExists; using ArticleService.ExistsByFeedAndGUID instead
