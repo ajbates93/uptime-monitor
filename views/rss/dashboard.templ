@@ -170,6 +170,12 @@ templ RSSDashboard() {
 				</div>
 
 				<script>
+					// Utility: safe HTML escaping using the DOM
+					function escapeHtml(str) {
+						const el = document.createElement('div');
+						el.textContent = String(str);
+						return el.innerHTML;
+					}
 				// Modal functions
 				function openAddFeedModal() {
 					document.getElementById('add-feed-modal').classList.remove('hidden');
@@ -286,7 +292,7 @@ templ RSSDashboard() {
 						return;
 					}
 
-					articleList.innerHTML = articles.map(article => `
+						articleList.innerHTML = articles.map(article => `
 						<div class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700">
 							<div class="flex items-start space-x-3">
 								<div class="flex-shrink-0">
@@ -306,11 +312,11 @@ templ RSSDashboard() {
 										</h3>
 										${article.is_read ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Read</span>' : ''}
 									</div>
-									<p class="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">${article.description || ''}</p>
-									<div class="mt-2 flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
-										${article.author ? '&lt;span&gt;By ' + article.author + '&lt;/span&gt;' : ''}
-										${article.published_at ? '&lt;span&gt;' + new Date(article.published_at).toLocaleDateString() + '&lt;/span&gt;' : ''}
-									</div>
+										<p class="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">${article.description || ''}</p>
+										<div class="mt-2 flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+											${article.author ? '<span>By ' + escapeHtml(article.author) + '</span>' : ''}
+											${article.published_at ? '<span>' + new Date(article.published_at).toLocaleDateString() + '</span>' : ''}
+										</div>
 								</div>
 							</div>
 						</div>
