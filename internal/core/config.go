@@ -39,6 +39,7 @@ type FeatureConfig struct {
 	Server ServerMonitoringConfig `json:"server"`
 	SSL    SSLConfig              `json:"ssl"`
 	Logs   LogViewerConfig        `json:"logs"`
+	RSS    RSSConfig              `json:"rss"`
 }
 
 // UptimeConfig contains uptime monitoring configuration
@@ -63,6 +64,17 @@ type SSLConfig struct {
 // LogViewerConfig contains log viewer configuration
 type LogViewerConfig struct {
 	Enabled bool `json:"enabled"`
+}
+
+// RSSConfig contains RSS feed reader configuration
+type RSSConfig struct {
+	Enabled              bool   `json:"enabled"`
+	FetchInterval        int    `json:"fetch_interval"`
+	MaxArticlesPerFeed   int    `json:"max_articles_per_feed"`
+	ImageCacheSize       string `json:"image_cache_size"`
+	CleanupInterval      int    `json:"cleanup_interval"`
+	UserAgent            string `json:"user_agent"`
+	MaxConcurrentFetches int    `json:"max_concurrent_fetches"`
 }
 
 // LoadConfig loads configuration from environment variables
@@ -96,6 +108,15 @@ func LoadConfig() (*Config, error) {
 			},
 			Logs: LogViewerConfig{
 				Enabled: getEnvAsBool("ARK_ENABLE_LOG_VIEWER", false),
+			},
+			RSS: RSSConfig{
+				Enabled:              getEnvAsBool("ARK_ENABLE_RSS", false),
+				FetchInterval:        getEnvAsInt("ARK_RSS_FETCH_INTERVAL", 3600),
+				MaxArticlesPerFeed:   getEnvAsInt("ARK_RSS_MAX_ARTICLES_PER_FEED", 100),
+				ImageCacheSize:       getEnvOrDefault("ARK_RSS_IMAGE_CACHE_SIZE", "100MB"),
+				CleanupInterval:      getEnvAsInt("ARK_RSS_CLEANUP_INTERVAL", 86400),
+				UserAgent:            getEnvOrDefault("ARK_RSS_USER_AGENT", "The Ark RSS Reader/1.0"),
+				MaxConcurrentFetches: getEnvAsInt("ARK_RSS_MAX_CONCURRENT_FETCHES", 5),
 			},
 		},
 	}
@@ -145,6 +166,8 @@ func (c *Config) GetFeatureConfig(featureName string) interface{} {
 	switch strings.ToLower(featureName) {
 	case "uptime":
 		return c.Features.Uptime
+	case "rss":
+		return c.Features.RSS
 	case "server":
 		return c.Features.Server
 	case "ssl":
@@ -161,6 +184,8 @@ func (c *Config) IsFeatureEnabled(featureName string) bool {
 	switch strings.ToLower(featureName) {
 	case "uptime":
 		return c.Features.Uptime.Enabled
+	case "rss":
+		return c.Features.RSS.Enabled
 	case "server":
 		return c.Features.Server.Enabled
 	case "ssl":

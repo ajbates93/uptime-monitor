@@ -337,6 +337,8 @@ func getFeatureUrl(featureName string) string {
 	switch featureName {
 	case "uptime":
 		return "/uptime"
+	case "rss":
+		return "/rss"
 	case "server":
 		return "/server"
 	case "ssl":

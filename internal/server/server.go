@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"the-ark/internal/features/rss"
 	"the-ark/internal/features/uptime"
 	"the-ark/internal/server/handlers"
 	"the-ark/internal/server/services/mailer"
@@ -98,6 +99,17 @@ func New(logger *slog.Logger) *Server {
 	if uptimeFeature != nil {
 		if err := registry.Register(uptimeFeature); err != nil {
 			logger.Error("Failed to register uptime feature", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	// Initialize RSS feature if enabled
+	var rssFeature *rss.Feature
+	if config.IsFeatureEnabled("rss") {
+		rssConfig := rss.NewConfig(config)
+		rssFeature = rss.NewFeature(coreLogger, coreDB, rssConfig)
+		if err := registry.Register(rssFeature); err != nil {
+			logger.Error("Failed to register RSS feature", "error", err)
 			os.Exit(1)
 		}
 	}

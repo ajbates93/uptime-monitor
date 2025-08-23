@@ -38,6 +38,11 @@ templ Navigation(props Props) {
 				</a>
 			</li>
 			<li>
+				<a href="/rss" class={ getNavLinkClass(props.ActivePage == "rss") }>
+					RSS Reader
+				</a>
+			</li>
+			<li>
 				<a href="/server" class={ getNavLinkClass(props.ActivePage == "server") }>
 					Server Monitoring
 				</a>
