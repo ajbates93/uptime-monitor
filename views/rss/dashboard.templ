@@ -51,7 +51,7 @@ templ RSSDashboard() {
 				<div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
 						<!-- Sidebar - Feed List -->
 						<div class="lg:col-span-1">
-							<div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+						<div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 border border-gray-200 dark:border-gray-700">
 								<h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Feeds</h2>
 								<div class="space-y-2" id="feed-list">
 									<!-- Feeds will be loaded here -->
@@ -62,7 +62,7 @@ templ RSSDashboard() {
 
 						<!-- Main Content - Articles -->
 						<div class="lg:col-span-3">
-							<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+							<div class="bg-white dark:bg-gray-800 shadow rounded-lg border border-gray-200 dark:border-gray-700">
 								<!-- Article List Header -->
 								<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
 									<div class="flex justify-between items-center">
@@ -239,17 +239,17 @@ templ RSSDashboard() {
 						return;
 					}
 
-					feedList.innerHTML = feeds.map(feed => `
-						<div class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onclick="selectFeed(${feed.id})">
-							<div class="flex items-center space-x-3">
-								<div class="w-3 h-3 rounded-full ${feed.enabled ? 'bg-green-500' : 'bg-gray-400'}"></div>
-								<div>
-									<div class="text-sm font-medium text-gray-900 dark:text-white">${feed.title || 'Untitled Feed'}</div>
-									<div class="text-xs text-gray-500 dark:text-gray-400">${feed.url}</div>
+						feedList.innerHTML = feeds.map(feed => `
+							<div class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onclick="selectFeed(${feed.id})">
+								<div class="flex items-center space-x-3 min-w-0">
+									<div class="w-3 h-3 rounded-full ${feed.enabled ? 'bg-green-500' : 'bg-gray-400'}"></div>
+									<div class="min-w-0">
+										<div class="text-sm font-medium text-gray-900 dark:text-white truncate">${feed.title || 'Untitled Feed'}</div>
+										<div class="text-xs text-gray-500 dark:text-gray-400 break-all">${feed.url}</div>
+									</div>
 								</div>
 							</div>
-						</div>
-					`).join('');
+						`).join('');
 				}
 
 				// Load articles
