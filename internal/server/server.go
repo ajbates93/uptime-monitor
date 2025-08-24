@@ -40,13 +40,19 @@ func New(logger *slog.Logger) *Server {
 		os.Exit(1)
 	}
 
-	// Initialize database
+    // Initialize database
 	dbPath := config.Database.Path
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		logger.Error("Failed to open database", "error", err)
 		os.Exit(1)
 	}
+
+    // Ensure SQLite foreign key constraints are enforced
+    if _, fkErr := db.Exec("PRAGMA foreign_keys = ON;"); fkErr != nil {
+        logger.Error("Failed to enable SQLite foreign_keys pragma", "error", fkErr)
+        os.Exit(1)
+    }
 
 	// Test the connection
 	if err := db.Ping(); err != nil {
